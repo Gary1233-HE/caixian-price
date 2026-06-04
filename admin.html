@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採鮮農產行｜管理後台</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#2d6a2d;--gl:#e8f5e8;--gm:#5a9a5a;
+  --orange:#c05a00;--red:#c0392b;--blue:#1565c0;--purple:#6a3aaa;
+  --bg:#f4f6f4;--card:#fff;--bd:#dde8dd;--text:#1a2a1a;--muted:#6a7a6a;
+}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
+
+/* topbar */
+.topbar{background:var(--green);color:#fff;padding:0 16px;display:flex;align-items:center;height:48px;gap:0;position:sticky;top:0;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.logo{font-size:15px;font-weight:900;margin-right:20px;white-space:nowrap}
+.tabs{display:flex;height:100%;flex:1;overflow-x:auto}
+.tab{padding:0 14px;height:100%;display:flex;align-items:center;cursor:pointer;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);border-bottom:3px solid transparent;transition:.15s;white-space:nowrap}
+.tab:hover{color:#fff;background:rgba(255,255,255,.08)}
+.tab.active{color:#fff;border-bottom-color:#fff}
+.topbar-right{display:flex;gap:6px;align-items:center;margin-left:auto;padding-left:10px}
+
+/* buttons */
+button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-weight:700;font-size:12px;padding:6px 12px;transition:.15s}
+.btn-w{background:#fff;color:var(--green)}.btn-w:hover{background:#e6f4e6}
+.btn-g{background:var(--green);color:#fff}.btn-g:hover{background:#235a23}
+.btn-o{background:#fff;color:var(--text);border:1px solid var(--bd)}.btn-o:hover{background:var(--gl)}
+.btn-gh{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}.btn-gh:hover{background:rgba(255,255,255,.25)}
+.btn-r{background:#fdecea;color:var(--red);border:1px solid #f5c6c0}.btn-r:hover{background:#fbd5d0}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-xs{padding:3px 7px;font-size:10px}
+
+/* views */
+.view{display:none;padding:14px 16px;max-width:1200px;margin:0 auto}
+.view.active{display:block}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.card-hdr{padding:9px 14px;font-weight:800;font-size:13px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap}
+.sec-title{font-size:14px;font-weight:800;color:var(--green)}
+
+/* table */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{background:#f0f5f0;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid var(--bd);white-space:nowrap}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl td{padding:5px 10px;border-bottom:1px solid #f0f4f0;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:nth-child(even) td{background:#f9fbf9}
+
+/* inputs */
+input[type=text],input[type=number],input[type=date],select{border:1px solid var(--bd);border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit;background:#fff;color:var(--text);width:100%}
+input[type=number]{text-align:right}
+input:focus,select:focus{outline:none;border-color:var(--gm)}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:10px 12px}
+.stat-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.stat-val{font-size:18px;font-weight:900;font-variant-numeric:tabular-nums}
+.cg{color:var(--green)}.co{color:var(--orange)}.cb{color:var(--blue)}.cr{color:var(--red)}.cp{color:var(--purple)}
+
+/* summary bar */
+.sbar{background:var(--green);color:#fff;border-radius:8px;padding:10px 14px;display:flex;gap:16px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.si{display:flex;flex-direction:column}
+.sl{font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.06em}
+.sv{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums;margin-top:1px}
+
+/* upload zone */
+.dropzone{border:2px dashed var(--gm);border-radius:8px;padding:32px;text-align:center;background:var(--gl);cursor:pointer;transition:.15s}
+.dropzone:hover,.dropzone.drag{background:#d0ebd0;border-color:var(--green)}
+.dz-icon{font-size:36px;margin-bottom:8px}
+.dz-text{font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px}
+.dz-hint{font-size:11px;color:var(--muted)}
+
+/* badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.bg{background:#e8f5e8;color:var(--green)}.bo{background:#fff0e0;color:var(--orange)}.br{background:#fdecea;color:var(--red)}
+
+/* trend */
+.up{color:var(--red);font-weight:700}.down{color:var(--blue);font-weight:700}
+
+/* toast */
+#toast{position:fixed;bottom:18px;right:18px;background:#1a3a1a;color:#fff;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;pointer-events:none;z-index:9999}
+#toast.show{opacity:1}
+
+/* fb banner */
+#fb-banner{background:#fff8e1;border-bottom:2px solid #ffd54f;padding:8px 16px;font-size:12px;color:#5a4000;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#fb-banner input{border:1px solid #ddd;border-radius:4px;padding:3px 7px;font-size:11px;font-family:monospace;width:220px}
+
+/* grid */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:800px){.g3{grid-template-columns:1fr}}
+
+.cat-filter{padding:3px 10px;border-radius:10px;border:1px solid var(--bd);background:#fff;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:.15s}
+.cat-filter.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+.trend-sel{appearance:none;text-align:center;cursor:pointer;width:44px;padding:3px 2px;font-size:12px}
+
+.del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:3px}
+.del-btn:hover{background:#fdecea}
+
+/* ── Price table layout ── */
+.price-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:800px){.price-2col{grid-template-columns:1fr}}
+.pt-wrap{margin-bottom:0;background:var(--card);border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+.pt-hdr{padding:8px 14px;font-weight:800;font-size:13px;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.pt-table{width:100%;border-collapse:collapse}
+.pt-table th{background:#f0f5f0;padding:5px 8px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid var(--bd);white-space:nowrap;text-align:left}
+.pt-table th.r{text-align:right}
+.pt-table td{padding:4px 8px;border-bottom:1px solid #f0f5f0;vertical-align:middle;font-size:12px}
+.pt-table tr:last-child td{border-bottom:none}
+.pt-table tr:hover td{background:#f8fbf8}
+.pt-table tr.drag-over td{background:#e8f5e8;outline:2px dashed var(--gm)}
+.pt-table tr.dragging{opacity:.35}
+.drag-handle{color:#ccc;font-size:13px;cursor:grab;user-select:none;padding:0 2px}
+.drag-handle:hover{color:#888}
+.pt-add{display:block;width:100%;padding:6px;background:#f8fbf8;border:none;border-top:1px solid var(--bd);color:var(--gm);font-weight:700;font-size:12px;cursor:pointer;text-align:center}
+.pt-add:hover{background:var(--gl);color:var(--green)}
+/* trend tag */
+.tt{font-size:9px;padding:1px 4px;border-radius:6px;font-weight:700;margin-left:2px;vertical-align:middle}
+.tt-up{background:#fde8e8;color:var(--red)}.tt-dn{background:#e8eeff;color:var(--blue)}.tt-eq{background:#eee;color:#888}
+/* sell price color */
+.sp-val{font-weight:700;font-variant-numeric:tabular-nums}
+.sp-ok{color:var(--green)}.sp-no{color:#ccc}
+/* compact inputs */
+.pt-table input[type=text],.pt-table input[type=number]{padding:3px 5px;font-size:12px;border:1px solid #e0e8e0;border-radius:3px}
+.pt-table input[type=text]:focus,.pt-table input[type=number]:focus{border-color:var(--gm);outline:none}
+.pt-table select{padding:2px 4px;font-size:11px;border:1px solid #e0e8e0;border-radius:3px;background:#fff}
+.pt-table select:focus{border-color:var(--gm);outline:none}
+/* cut cost chain display */
+.cut-chain{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;font-size:11px}
+.cut-chain .cc-val{font-weight:700;color:var(--blue);min-width:28px}
+</style>
+</head>
+<body>
+
+<!-- Firebase -->
+<div id="fb-banner">
+  <span>⚙ Firebase：</span>
+  <input id="fb-pid" placeholder="Project ID" />
+  <input id="fb-key" placeholder="API Key" />
+  <button class="btn-g btn-sm" onclick="initFB()">連線</button>
+  <span id="fb-status" style="font-size:11px;color:#888">未連線</span>
+</div>
+
+<div class="topbar">
+  <div class="logo">🌿 採鮮農產行</div>
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-tab="price">報價設定</div>
+    <div class="tab" data-tab="profit">利潤分析</div>
+    <div class="tab" data-tab="history">歷史紀錄</div>
+  </div>
+  <div class="topbar-right">
+    <span id="sync-dot" style="font-size:11px;color:rgba(255,255,255,.6)"></span>
+    <button class="btn-gh btn-sm" onclick="loadCloud()">↓ 雲端載入</button>
+    <button class="btn-w btn-sm" onclick="publishAll()">☁ 儲存並發布</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 1: 報價設定（含成本）
+══════════════════════════════════════════════════════ -->
+<div class="view active" id="view-price">
+
+  <!-- Meta -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-hdr" style="background:var(--green)">店家資訊</div>
+    <div style="padding:12px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      <div><label style="font-size:10px;color:var(--muted);font-weight:700">店名</label><br><input id="m-name" value="採鮮農產行"></div>
+      <div><label style="font-size:10px;color:var(--muted);font-weight:700">聯絡人</label><br><input id="m-contact" value="何翰林"></div>
+      <div><label style="font-size:10px;color:var(--muted);font-weight:700">手機</label><br><input id="m-phone" value="0931-981233"></div>
+      <div><label style="font-size:10px;color:var(--muted);font-weight:700">LINE</label><br><input id="m-line" value="@nvy5669n"></div>
+      <div style="grid-column:span 2"><label style="font-size:10px;color:var(--muted);font-weight:700">備註</label><br><input id="m-note" value="價格以當日市場行情為準，如有異動恕不另行通知"></div>
+    </div>
+  </div>
+
+  <div class="sec-hdr">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="price-search" placeholder="搜尋品名…" style="width:160px" oninput="renderPriceView()">
+      <span style="font-size:11px;color:var(--muted)">拖曳 ⠿ 可在欄內排序</span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn-o btn-sm" onclick="openBatch()">批次加成率</button>
+    </div>
+  </div>
+
+  <div id="price-tables"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 2: 利潤分析
+══════════════════════════════════════════════════════ -->
+<div class="view" id="view-profit">
+  <div id="profit-upload">
+    <div class="dropzone" id="dropzone"
+      onclick="document.getElementById('xlsx-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <div class="dz-icon">📂</div>
+      <div class="dz-text">點擊或拖放「商品銷貨彙總表」Excel</div>
+      <div class="dz-hint">每次上傳自動對應成本，計算利潤</div>
+    </div>
+    <input type="file" id="xlsx-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+  </div>
+
+  <div id="profit-result" style="display:none">
+    <div class="sec-hdr">
+      <div>
+        <div class="sec-title" id="p-title">利潤分析</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="p-date"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span id="p-match-badge"></span>
+        <button class="btn-o btn-sm" onclick="resetUpload()">重新上傳</button>
+        <button class="btn-o btn-sm" onclick="exportProfit()">↓ 匯出 Excel</button>
+        <button class="btn-g btn-sm" onclick="saveProfitRecord()">儲存此次紀錄</button>
+      </div>
+    </div>
+
+    <div class="sbar">
+      <div class="si"><div class="sl">總營收</div><div class="sv" id="p-rev">—</div></div>
+      <div class="si"><div class="sl">估算成本</div><div class="sv" id="p-cost">—</div></div>
+      <div class="si"><div class="sl">估算利潤</div><div class="sv" id="p-profit">—</div></div>
+      <div class="si"><div class="sl">利潤率</div><div class="sv" id="p-margin">—</div></div>
+      <div class="si"><div class="sl">比對品項</div><div class="sv" id="p-covered">—</div></div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <button class="btn-w btn-sm" onclick="filterProfit('all')">全部</button>
+        <button class="btn-w btn-sm" onclick="filterProfit('ok')">已比對</button>
+        <button class="btn-w btn-sm" onclick="filterProfit('miss')">未比對</button>
+      </div>
+    </div>
+
+    <div id="p-unmatched" style="display:none;margin-bottom:10px">
+      <div class="card">
+        <div class="card-hdr" style="background:var(--orange)">
+          ⚠ 未比對品項（可至「報價設定」補填成本）
+          <button class="btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="toggleUnmatched()">展開</button>
+        </div>
+        <div id="p-unmatched-list" style="display:none;padding:10px 14px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>品名</th><th>規格</th>
+              <th class="r">數量</th><th class="r">含稅小計</th>
+              <th class="r">成本/單位</th><th class="r">估算成本</th>
+              <th class="r">利潤</th><th class="r">利潤率</th><th>狀態</th>
+            </tr>
+          </thead>
+          <tbody id="profit-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 3: 歷史紀錄
+══════════════════════════════════════════════════════ -->
+<div class="view" id="view-history">
+  <div class="stats" id="hist-stats"></div>
+  <div class="card">
+    <div class="card-hdr" style="background:var(--green)">
+      歷史銷售紀錄
+      <button class="btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="exportAllHistory()">↓ 匯出全部</button>
+    </div>
+    <div id="hist-list"></div>
+  </div>
+</div>
+
+<!-- Batch modal -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:10px;padding:22px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="font-weight:800;font-size:14px;margin-bottom:14px">批次設定加成率</div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px">套用類別</div>
+      <div id="modal-cats" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">加成率 %</div>
+      <input type="number" id="modal-rate" value="30" style="font-size:14px;padding:6px 8px">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-o" onclick="closeModal()">取消</button>
+      <button class="btn-g" onclick="applyBatch()">套用</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ╔══════════════════════════════════════════════════════╗
+// ║  STATE                                               ║
+// ╚══════════════════════════════════════════════════════╝
+const CATS = [
+  {id:'c1',name:'🥬 葉菜類',color:'#3a8a3a'},    // 左欄 index 0
+  {id:'c2',name:'🍈 瓜果類',color:'#c05a00'},    // 左欄 index 1
+  {id:'c4',name:'🔪 蔬菜截切',color:'#1a6a6a'},  // 右欄 index 2
+  {id:'c3',name:'🍄 根莖豆菇類',color:'#6a3aaa'},// 右欄 index 3
+];
+const DEFAULT_ITEMS = [
+  // 葉菜
+  {id:'i1',cat:'c1',name:'修清高麗/KG'},{id:'i2',cat:'c1',name:'高麗約20KG'},{id:'i3',cat:'c1',name:'進口山東白15KG'},
+  {id:'i4',cat:'c1',name:'油菜18KG'},{id:'i5',cat:'c1',name:'青江菜18KG'},{id:'i6',cat:'c1',name:'蚵仔白18KG'},
+  {id:'i7',cat:'c1',name:'小白菜18KG'},{id:'i8',cat:'c1',name:'空心菜KG'},{id:'i9',cat:'c1',name:'大陸妹10KG'},
+  {id:'i10',cat:'c1',name:'奶油白菜/KG'},{id:'i11',cat:'c1',name:'地瓜葉10KG'},{id:'i12',cat:'c1',name:'芹菜/捆'},
+  {id:'i13',cat:'c1',name:'西洋芹/KG'},{id:'i14',cat:'c1',name:'綠豆芽/KG'},{id:'i15',cat:'c1',name:'黃豆芽/KG'},
+  {id:'i16',cat:'c1',name:'韭菜/約1.8KG'},{id:'i17',cat:'c1',name:'韭菜花3KG'},{id:'i18',cat:'c1',name:'刈仁/KG'},
+  {id:'i19',cat:'c1',name:'白杏菜/捆'},{id:'i20',cat:'c1',name:'青杏菜/捆'},{id:'i21',cat:'c1',name:'紅杏菜/捆'},
+  {id:'i22',cat:'c1',name:'龍鬚菜/KG'},{id:'i23',cat:'c1',name:'紅地瓜/KG'},{id:'i24',cat:'c1',name:'黃地瓜/KG'},
+  {id:'i25',cat:'c1',name:'洋蔥/KG'},{id:'i26',cat:'c1',name:'洋蔥12KG'},{id:'i27',cat:'c1',name:'麻竹筍/KG'},
+  {id:'i28',cat:'c1',name:'鮮筍片/KG'},{id:'i29',cat:'c1',name:'鮮筍絲/KG'},
+  // 瓜果
+  {id:'j1',cat:'c2',name:'青花椰/KG'},{id:'j2',cat:'c2',name:'進口青花椰/7.5KG'},{id:'j3',cat:'c2',name:'帶梗白花椰/KG'},
+  {id:'j4',cat:'c2',name:'白花椰/20KG'},{id:'j5',cat:'c2',name:'絲瓜A/KG'},{id:'j6',cat:'c2',name:'蒲仔A/KG'},
+  {id:'j7',cat:'c2',name:'小黃瓜A/KG'},{id:'j8',cat:'c2',name:'小黃瓜B/KG'},{id:'j9',cat:'c2',name:'大黃瓜A/KG'},
+  {id:'j10',cat:'c2',name:'大黃瓜B/KG'},{id:'j11',cat:'c2',name:'茄子A/KG'},{id:'j12',cat:'c2',name:'茄子B/KG'},
+  {id:'j13',cat:'c2',name:'白苦瓜A/KG'},{id:'j14',cat:'c2',name:'白苦瓜B/KG'},{id:'j15',cat:'c2',name:'長豆/KG'},
+  {id:'j16',cat:'c2',name:'青椒A/KG'},{id:'j17',cat:'c2',name:'青椒B/KG'},{id:'j18',cat:'c2',name:'彩椒A/KG'},
+  {id:'j19',cat:'c2',name:'美生菜/KG'},{id:'j20',cat:'c2',name:'蕃茄A/KG'},{id:'j21',cat:'c2',name:'蕃茄A/10KG'},
+  {id:'j22',cat:'c2',name:'蕃茄B/KG'},{id:'j23',cat:'c2',name:'蕃茄B/10KG'},{id:'j24',cat:'c2',name:'南瓜/KG'},
+  {id:'j25',cat:'c2',name:'綠節瓜/KG'},{id:'j26',cat:'c2',name:'四季豆A/KG'},{id:'j27',cat:'c2',name:'甜豆/KG(修清)'},
+  {id:'j28',cat:'c2',name:'荷蘭豆/KG(修清)'},{id:'j29',cat:'c2',name:'玉米(帶葉)/KG'},{id:'j30',cat:'c2',name:'茭白筍A/KG'},
+  {id:'j31',cat:'c2',name:'茭白筍B3KG'},{id:'j32',cat:'c2',name:'雪里紅3KG'},{id:'j33',cat:'c2',name:'紅蘿蔔/KG'},
+  {id:'j34',cat:'c2',name:'紅蘿蔔切絲/KG'},{id:'j35',cat:'c2',name:'新紅蘿蔔/10KG'},{id:'j36',cat:'c2',name:'進口白蘿蔔/KG'},
+  {id:'j37',cat:'c2',name:'冬瓜整條/KG'},{id:'j38',cat:'c2',name:'冬瓜切段/KG'},
+  // 根莖豆菇
+  {id:'k1',cat:'c3',name:'玉米筍/盒'},{id:'k2',cat:'c3',name:'台灣蘆筍削皮300g'},{id:'k3',cat:'c3',name:'台灣馬K/KG'},
+  {id:'k4',cat:'c3',name:'台灣馬K/25KG'},{id:'k5',cat:'c3',name:'青蔥/KG'},{id:'k6',cat:'c3',name:'九層塔/KG'},
+  {id:'k7',cat:'c3',name:'青龍/KG'},{id:'k8',cat:'c3',name:'大辣椒/KG'},{id:'k9',cat:'c3',name:'朝天椒/KG'},
+  {id:'k10',cat:'c3',name:'秀珍菇A/KG'},{id:'k11',cat:'c3',name:'木耳/KG'},{id:'k12',cat:'c3',name:'木耳切絲/KG'},
+  {id:'k13',cat:'c3',name:'杏鮑菇B/KG'},{id:'k14',cat:'c3',name:'杏鮑菇C/KG'},{id:'k15',cat:'c3',name:'杏鮑菇D3KG'},
+  {id:'k16',cat:'c3',name:'金針菇A/2.5KG'},{id:'k17',cat:'c3',name:'金針菇B/5KG'},{id:'k18',cat:'c3',name:'香菇小/3KG'},
+  {id:'k19',cat:'c3',name:'板豆腐1.8KG盒裝'},{id:'k20',cat:'c3',name:'真空三角油豆腐1KG'},{id:'k21',cat:'c3',name:'大漢嫩豆腐'},
+  {id:'k22',cat:'c3',name:'大漢雞蛋豆腐'},{id:'k23',cat:'c3',name:'百真豆腐3KG'},{id:'k24',cat:'c3',name:'凍豆腐3KG'},
+  {id:'k25',cat:'c3',name:'冷凍毛豆仁1KG'},{id:'k26',cat:'c3',name:'冷凍玉米粒1KG'},{id:'k27',cat:'c3',name:'冷凍南瓜塊1KG'},
+  {id:'k28',cat:'c3',name:'冷凍敏豆段1KG'},{id:'k29',cat:'c3',name:'冷凍玉米筍1KG'},{id:'k30',cat:'c3',name:'冷凍青花1KG'},
+  {id:'k31',cat:'c3',name:'冷凍芋角3KG'},{id:'k32',cat:'c3',name:'小貢丸3KG'},{id:'k33',cat:'c3',name:'赤肉羹3KG'},
+];
+
+// items: array of {id,cat,name,cost,type,markup,price,trend,visible}
+// history: [{date,filename,rows,rev,cost,profit}]
+let state = { meta:{}, items:[], history:[] };
+let db = null;
+let activeCatPrice = 'all';
+let parsedXlsx = [];
+let analysisRows = [];
+let profitFilter = 'all';
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  INIT                                                ║
+// ╚══════════════════════════════════════════════════════╝
+function init() {
+  const saved = localStorage.getItem('cxnc_state');
+  if (saved) {
+    try { state = JSON.parse(saved); } catch {}
+  }
+  // Ensure all default items exist
+  DEFAULT_ITEMS.forEach(def => {
+    if (!state.items.find(i => i.id === def.id)) {
+      state.items.push({...def, cost:0, type:'pct', markup:30, price:0, trend:'', visible:true});
+    }
+  });
+  if (!state.meta.name) state.meta = {name:'採鮮農產行',contact:'何翰林',phone:'0931-981233',line:'@nvy5669n',note:'價格以當日市場行情為準，如有異動恕不另行通知'};
+  if (!state.history)    state.history = [];
+  if (!state.lastPrices) state.lastPrices = {};
+  fillMeta();
+  renderPriceView();
+  // restore FB config
+  const pid = localStorage.getItem('fb_pid'), key = localStorage.getItem('fb_key');
+  if (pid) document.getElementById('fb-pid').value = pid;
+  if (key) document.getElementById('fb-key').value = key;
+}
+
+function saveLocal() {
+  collectMeta();
+  collectPriceInputs();
+  localStorage.setItem('cxnc_state', JSON.stringify(state));
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  TABS                                                ║
+// ╚══════════════════════════════════════════════════════╝
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  tab.classList.add('active');
+  const name = tab.dataset.tab;
+  document.getElementById('view-' + name).classList.add('active');
+  if (name === 'history') renderHistory();
+});
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  META                                                ║
+// ╚══════════════════════════════════════════════════════╝
+function fillMeta() {
+  const m = state.meta;
+  document.getElementById('m-name').value    = m.name    || '';
+  document.getElementById('m-contact').value = m.contact || '';
+  document.getElementById('m-phone').value   = m.phone   || '';
+  document.getElementById('m-line').value    = m.line    || '';
+  document.getElementById('m-note').value    = m.note    || '';
+}
+function collectMeta() {
+  state.meta = {
+    name:    document.getElementById('m-name').value,
+    contact: document.getElementById('m-contact').value,
+    phone:   document.getElementById('m-phone').value,
+    line:    document.getElementById('m-line').value,
+    note:    document.getElementById('m-note').value,
+  };
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  PRICE / COST VIEW                                   ║
+// ╚══════════════════════════════════════════════════════╝
+// 截切售價計算
+// 整件：原料售價 + 工費
+// 散切：(原料售價 ÷ 原料重量) ÷ 成率 + 固定加價
+function cutSellPrice(item) {
+  const src = state.items.find(i => i.id === item.srcId);
+  if (!src) return 0;
+  const srcSell = sellPrice(src); // 原料售價
+  if (!srcSell) return 0;
+
+  if (item.cutType === 'whole') {
+    // 整件截切：原料售價 + 工費
+    return Math.round(srcSell + (Number(item.cutFee) || 0));
+  } else {
+    // 散切：(原料售價 ÷ 原料重量) ÷ 成率 + 固定加價
+    const weight  = Number(item.srcWeight) || 1;
+    const yield_  = Number(item.cutYield)  || 1;   // 成率 0~1
+    const addon   = Number(item.cutAddon)  || 0;   // 固定加價
+    return Math.round((srcSell / weight) / yield_ + addon);
+  }
+}
+
+function effectiveCost(item) {
+  if (item.cat === 'c4' && item.srcId) {
+    const src = state.items.find(i => i.id === item.srcId);
+    if (src) return Number(src.cost) || 0;
+  }
+  return Number(item.cost) || 0;
+}
+
+function sellPrice(item) {
+  if (item.cat === 'c4' && item.srcId) return cutSellPrice(item);
+  const cost = effectiveCost(item);
+  if (!cost) return Number(item.price) || 0;
+  if (item.type === 'manual') return Number(item.price) || 0;
+  if (item.type === 'fixed')  return cost + (Number(item.markup) || 0);
+  return Math.round(cost * (1 + (Number(item.markup) || 0) / 100));
+}
+
+// ── Auto trend: compare current sell price with lastPrices snapshot ──────
+function autoTrend() {
+  const last = state.lastPrices || {};
+  let changed = 0;
+  state.items.forEach(item => {
+    const sp = sellPrice(item);
+    const prev = last[item.id];
+    if (prev === undefined || sp === 0) return; // no previous data
+    if (sp > prev)      { item.trend = 'up';  changed++; }
+    else if (sp < prev) { item.trend = 'down'; changed++; }
+    else                { item.trend = ''; }  // 不變就清空
+  });
+  return changed;
+}
+
+// ── Snapshot current prices as "last published" ───────────────────────────
+function snapshotPrices() {
+  state.lastPrices = {};
+  state.items.forEach(item => { state.lastPrices[item.id] = sellPrice(item); });
+}
+
+// ── Drag state ────────────────────────────────────────────────────────────
+let dragId = null;
+
+function renderPriceView() {
+  const search = (document.getElementById('price-search')?.value || '').toLowerCase();
+  const container = document.getElementById('price-tables');
+  container.innerHTML = '';
+
+  // 兩欄：index 0,1 → 左（葉菜+截切）；index 2,3 → 右（瓜果+根莖）
+  const grid = document.createElement('div');
+  grid.className = 'price-2col';
+  const leftCol  = document.createElement('div');
+  const rightCol = document.createElement('div');
+  leftCol.style.cssText  = 'display:flex;flex-direction:column;gap:14px;min-width:0';
+  rightCol.style.cssText = 'display:flex;flex-direction:column;gap:14px;min-width:0';
+  grid.appendChild(leftCol);
+  grid.appendChild(rightCol);
+  container.appendChild(grid);
+
+  CATS.forEach((cat, catIdx) => {
+    const colTarget = catIdx <= 1 ? leftCol : rightCol;
+    const items = state.items.filter(it =>
+      it.cat === cat.id && (!search || it.name.toLowerCase().includes(search))
+    );
+
+    // wrapper
+    const wrap = document.createElement('div');
+    wrap.className = 'pt-wrap';
+
+    // header
+    const hdr = document.createElement('div');
+    hdr.className = 'pt-hdr';
+    hdr.style.background = cat.color;
+    hdr.innerHTML = `<span>${cat.name} <span style="font-size:10px;opacity:.65">${items.length} 項</span></span>`;
+    wrap.appendChild(hdr);
+
+    // table
+    const isCutCat = cat.id === 'c4';
+    const table = document.createElement('table');
+    table.className = 'pt-table';
+
+    // thead
+    const thead = document.createElement('thead');
+    thead.innerHTML = isCutCat
+      ? `<tr>
+          <th style="width:20px"></th>
+          <th style="min-width:100px">品名</th>
+          <th style="min-width:110px">原料品項</th>
+          <th style="width:48px;text-align:center">類型</th>
+          <th style="width:120px;text-align:right">參數</th>
+          <th class="r" style="width:75px">售價</th>
+          <th style="width:22px"></th>
+        </tr>`
+      : `<tr>
+          <th style="width:20px"></th>
+          <th style="min-width:160px">品名</th>
+          <th class="r" style="width:70px">成本</th>
+          <th style="width:80px">計算方式</th>
+          <th class="r" style="width:60px">加成值</th>
+          <th class="r" style="width:75px">售價</th>
+          <th style="width:24px"></th>
+        </tr>`;
+    table.appendChild(thead);
+
+    // tbody (droppable)
+    const tbody = document.createElement('tbody');
+    tbody.id = 'rows-' + cat.id;
+    tbody.addEventListener('dragover', e => {
+      e.preventDefault();
+      const over = e.target.closest('tr[data-id]');
+      tbody.querySelectorAll('tr[data-id]').forEach(r => r.classList.remove('drag-over'));
+      if (over) over.classList.add('drag-over');
+    });
+    tbody.addEventListener('drop', e => {
+      e.preventDefault();
+      tbody.querySelectorAll('tr[data-id]').forEach(r => r.classList.remove('drag-over'));
+      if (!dragId) return;
+      const over = e.target.closest('tr[data-id]');
+      if (!over || over.dataset.id === dragId) return;
+      const fromIdx = state.items.findIndex(i => i.id === dragId);
+      const toIdx   = state.items.findIndex(i => i.id === over.dataset.id);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.items.splice(fromIdx, 1);
+      state.items.splice(toIdx, 0, moved);
+      dragId = null;
+      renderPriceView();
+    });
+    tbody.addEventListener('dragleave', e => {
+      if (!tbody.contains(e.relatedTarget))
+        tbody.querySelectorAll('tr[data-id]').forEach(r => r.classList.remove('drag-over'));
+    });
+
+    items.forEach(item => {
+      const sp = sellPrice(item);
+      const lastP = state.lastPrices?.[item.id];
+      const diffTag = (lastP !== undefined && sp > 0)
+        ? (sp > lastP ? '<span class="tt tt-up">↑</span>'
+         : sp < lastP ? '<span class="tt tt-dn">↓</span>'
+         : '')
+        : '';
+      const computedCost = effectiveCost(item);
+
+      const tr = document.createElement('tr');
+      tr.dataset.id = item.id;
+      tr.draggable = true;
+      tr.addEventListener('dragstart', e => {
+        dragId = item.id;
+        setTimeout(() => tr.classList.add('dragging'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      tr.addEventListener('dragend', () => tr.classList.remove('dragging'));
+
+      // markup input
+      const markupInput = item.type === 'manual'
+        ? `<input type="number" style="width:52px" value="${item.price||''}" placeholder="售價"
+            onchange="setField('${item.id}','price',this.value);refreshRow('${item.id}')">`
+        : `<input type="number" style="width:48px" value="${item.markup||''}" placeholder="0"
+            onchange="setField('${item.id}','markup',this.value);refreshRow('${item.id}')">
+           <span style="font-size:10px;color:var(--muted)">${item.type==='pct'?'%':'元'}</span>`;
+
+      // type select
+      const typeSelect = `<select style="width:62px"
+          onchange="setField('${item.id}','type',this.value);renderPriceView()">
+          <option value="pct"   ${item.type==='pct'   ?'selected':''}>加成%</option>
+          <option value="fixed" ${item.type==='fixed' ?'selected':''}>加元</option>
+          <option value="manual"${item.type==='manual'?'selected':''}>手動</option>
+        </select>`;
+
+      // 漲跌由 autoTrend() 自動比對上次發布價格，不需手動
+
+      if (isCutCat) {
+        const srcOptions = state.items.filter(i => i.cat !== 'c4')
+          .map(i => `<option value="${i.id}" ${item.srcId===i.id?'selected':''}>${i.name}</option>`)
+          .join('');
+        const isWhole = (item.cutType || 'whole') === 'whole';
+        const srcSell = (() => { const s = state.items.find(i=>i.id===item.srcId); return s?sellPrice(s):0; })();
+
+        // 整件：顯示「原料售價 + 工費」；散切：顯示「÷重量 ÷成率 + 加價」
+        const cutParamsHtml = isWhole
+          ? `<td style="text-align:right" colspan="2">
+               <span style="font-size:10px;color:var(--muted)">工費+</span>
+               <input type="number" style="width:48px" value="${item.cutFee||0}" placeholder="0"
+                 onchange="setField('${item.id}','cutFee',this.value);refreshRow('${item.id}')">
+             </td>`
+          : `<td style="text-align:right">
+               <span style="font-size:10px;color:var(--muted)">重量</span>
+               <input type="number" step="0.1" style="width:42px" value="${item.srcWeight||1}" placeholder="KG"
+                 onchange="setField('${item.id}','srcWeight',this.value);refreshRow('${item.id}')">
+             </td>
+             <td style="text-align:right">
+               <span style="font-size:10px;color:var(--muted)">成率</span>
+               <input type="number" step="0.01" min="0.01" max="1" style="width:40px" value="${item.cutYield||0.8}" placeholder="0.8"
+                 onchange="setField('${item.id}','cutYield',this.value);refreshRow('${item.id}')">
+             </td>`;
+
+        const cutAddonHtml = isWhole ? '' :
+          `<td style="text-align:right">
+             <span style="font-size:10px;color:var(--muted)">加</span>
+             <input type="number" style="width:44px" value="${item.cutAddon||0}" placeholder="0"
+               onchange="setField('${item.id}','cutAddon',this.value);refreshRow('${item.id}')">
+           </td>`;
+
+        tr.innerHTML = `
+          <td><span class="drag-handle">⠿</span></td>
+          <td><input type="text" style="width:100%;min-width:100px;font-weight:600" value="${item.name}"
+            onchange="setField('${item.id}','name',this.value)"></td>
+          <td>
+            <select style="width:100%;max-width:120px;font-size:11px"
+              onchange="setField('${item.id}','srcId',this.value);refreshRow('${item.id}')">
+              <option value="">選原料…</option>${srcOptions}
+            </select>
+          </td>
+          <td style="text-align:center">
+            <select style="width:46px;font-size:11px"
+              onchange="setField('${item.id}','cutType',this.value);renderPriceView()">
+              <option value="whole" ${isWhole?'selected':''}>整件</option>
+              <option value="loose" ${!isWhole?'selected':''}>散切</option>
+            </select>
+          </td>
+          ${cutParamsHtml}
+          ${cutAddonHtml}
+          <td style="text-align:right">
+            <span class="sp-val ${sp>0?'sp-ok':'sp-no'}" id="sp-${item.id}">${sp>0?fmt(sp):'—'}${diffTag}</span>
+          </td>
+          <td><button class="del-btn btn-xs" onclick="deleteItem('${item.id}')">✕</button></td>`;
+      } else {
+        tr.innerHTML = `
+          <td><span class="drag-handle">⠿</span></td>
+          <td><input type="text" style="width:100%;min-width:140px;font-weight:600" value="${item.name}"
+            onchange="setField('${item.id}','name',this.value)"></td>
+          <td style="text-align:right">
+            <input type="number" style="width:60px" value="${item.cost||''}" placeholder="0"
+              onchange="setField('${item.id}','cost',this.value);refreshRow('${item.id}')">
+          </td>
+          <td>${typeSelect}</td>
+          <td style="text-align:right">${markupInput}</td>
+          <td style="text-align:right">
+            <span class="sp-val ${sp>0?'sp-ok':'sp-no'}" id="sp-${item.id}">${sp>0?fmt(sp):'—'}${diffTag}</span>
+          </td>
+          <td><button class="del-btn btn-xs" onclick="deleteItem('${item.id}')">✕</button></td>`;
+      }
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+
+    // add button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'pt-add';
+    addBtn.textContent = '＋ 新增品項';
+    addBtn.onclick = () => addItemToCol(cat.id);
+    wrap.appendChild(addBtn);
+
+    colTarget.appendChild(wrap);
+  });
+}
+
+
+// Refresh just the sell price display of one row without full re-render
+function refreshRow(id) {
+  const item = state.items.find(i => i.id === id);
+  if (!item) return;
+
+  // 更新截切成本顯示
+  const ccEl = document.getElementById('cc-' + id);
+  if (ccEl) {
+    const cc = effectiveCost(item);
+    ccEl.textContent = cc > 0 ? cc.toFixed(1) : '—';
+  }
+
+  // 若此品項是其他截切品項的原料，也一起刷新那些品項
+  state.items.filter(i => i.cat === 'c4' && i.srcId === id).forEach(dep => {
+    const depCcEl = document.getElementById('cc-' + dep.id);
+    if (depCcEl) {
+      const cc = effectiveCost(dep);
+      depCcEl.textContent = cc > 0 ? cc.toFixed(1) : '—';
+    }
+    const depSpEl = document.getElementById('sp-' + dep.id);
+    if (depSpEl) {
+      const sp2 = sellPrice(dep);
+      const lastP2 = state.lastPrices?.[dep.id];
+      const diffTag2 = (lastP2 !== undefined && sp2 > 0)
+        ? (sp2 > lastP2 ? '<span class="tt tt-up">↑</span>'
+         : sp2 < lastP2 ? '<span class="tt tt-dn">↓</span>'
+         : '') : '';
+      depSpEl.innerHTML = (sp2 > 0 ? fmt(sp2) : '—') + diffTag2;
+      depSpEl.className = 'sp-val ' + (sp2 > 0 ? 'sp-ok' : 'sp-no');
+    }
+  });
+
+  const sp = sellPrice(item);
+  const el = document.getElementById('sp-' + id);
+  if (el) {
+    const lastP = state.lastPrices?.[id];
+    const diffTag = (lastP !== undefined && sp > 0)
+      ? (sp > lastP ? '<span class="tt tt-up">↑</span>'
+       : sp < lastP ? '<span class="tt tt-dn">↓</span>'
+       : '')
+      : '';
+    el.innerHTML = (sp > 0 ? fmt(sp) : '—') + diffTag;
+    el.className = 'sp-val ' + (sp > 0 ? 'sp-ok' : 'sp-no');
+  }
+}
+
+function setField(id, field, val) {
+  const item = state.items.find(i => i.id === id);
+  if (!item) return;
+  const numFields = ['cost','markup','price','srcRatio','cutFee','cutYield','cutAddon','srcWeight'];
+  if (numFields.includes(field)) item[field] = Number(val) || 0;
+  else item[field] = val;
+}
+
+function collectPriceInputs() { /* mutations happen via onchange */ }
+
+function addItemToCol(catId) {
+  const base = catId === 'c4'
+    ? { cutType:'whole', cutFee:50, srcId:'', srcWeight:1, cutYield:0.8, cutAddon:0,
+        type:'manual', markup:0, price:0 }
+    : { cost:0, type:'pct', markup:30, price:0 };
+  const newItem = {
+    id: 'x' + Date.now(), cat: catId,
+    name: '新品項', visible: true,
+    ...base
+  };
+  // Insert at end of that category's items
+  const lastIdx = state.items.reduce((acc, it, i) => it.cat === catId ? i : acc, -1);
+  if (lastIdx >= 0) state.items.splice(lastIdx + 1, 0, newItem);
+  else state.items.push(newItem);
+  renderPriceView();
+  toast(`已在 ${CATS.find(c=>c.id===catId)?.name} 新增品項`);
+}
+
+// Keep old addItem for batch modal compatibility
+function addItem() { addItemToCol('c1'); }
+
+function deleteItem(id) {
+  if (!confirm('確定刪除此品項？')) return;
+  state.items = state.items.filter(i => i.id !== id);
+  renderPriceView();
+  toast('已刪除');
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  BATCH MODAL                                         ║
+// ╚══════════════════════════════════════════════════════╝
+function openBatch() {
+  const mc = document.getElementById('modal-cats');
+  mc.innerHTML = '';
+  CATS.forEach(c => {
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer';
+    lbl.innerHTML = `<input type="checkbox" value="${c.id}" checked> ${c.name}`;
+    mc.appendChild(lbl);
+  });
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+function applyBatch() {
+  const rate = Number(document.getElementById('modal-rate').value) || 0;
+  const checked = [...document.querySelectorAll('#modal-cats input:checked')].map(e => e.value);
+  state.items.forEach(it => {
+    if (checked.includes(it.cat)) { it.type = 'pct'; it.markup = rate; }
+  });
+  closeModal();
+  renderPriceView();
+  toast(`已套用 ${rate}% 加成率`);
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  FIREBASE                                            ║
+// ╚══════════════════════════════════════════════════════╝
+function initFB() {
+  const pid = document.getElementById('fb-pid').value.trim();
+  const key = document.getElementById('fb-key').value.trim();
+  if (!pid || !key) return toast('請填入 Project ID 和 API Key');
+  try {
+    const ex = window.firebase?.apps?.find(a => a.name === '[DEFAULT]');
+    const app = ex || firebase.initializeApp({ apiKey:key, projectId:pid, authDomain:`${pid}.firebaseapp.com` });
+    db = app.firestore();
+    localStorage.setItem('fb_pid', pid);
+    localStorage.setItem('fb_key', key);
+    document.getElementById('fb-status').textContent = '✓ 已連線';
+    document.getElementById('fb-status').style.color = '#90ee90';
+    toast('Firebase 連線成功');
+  } catch(e) { toast('連線失敗：' + e.message); }
+}
+
+async function loadCloud() {
+  if (!db) return toast('請先連線 Firebase');
+  try {
+    const snap = await db.collection('price_board').doc('current').get();
+    if (snap.exists) {
+      const d = snap.data();
+      if (d.items)      state.items      = d.items;
+      if (d.meta)       state.meta       = d.meta;
+      if (d.history)    state.history    = d.history;
+      if (d.lastPrices) state.lastPrices = d.lastPrices;
+      saveLocal();
+      fillMeta();
+      renderPriceView();
+      toast('已從雲端載入');
+    } else { toast('雲端尚無資料'); }
+  } catch(e) { toast('載入失敗：' + e.message); }
+}
+
+async function publishAll() {
+  collectMeta();
+
+  // ── Auto-trend: compare with last published prices ──────────────────────
+  const changed = autoTrend();
+  if (changed > 0) {
+    renderPriceView(); // reflect updated trend arrows
+    toast(`自動偵測到 ${changed} 個品項價格變動，已更新漲跌`);
+    await new Promise(r => setTimeout(r, 600)); // brief visual pause
+  }
+
+  // Snapshot current prices for next comparison
+  snapshotPrices();
+  saveLocal();
+
+  document.getElementById('sync-dot').textContent = '⏳ 發布中…';
+  if (!db) {
+    document.getElementById('sync-dot').textContent = '';
+    toast('已存本機（未連線 Firebase）');
+    return;
+  }
+  try {
+    await db.collection('price_board').doc('current').set({
+      meta:      state.meta,
+      items:     state.items,
+      history:   state.history,
+      lastPrices: state.lastPrices,
+      updatedAt: new Date().toISOString()
+    });
+    document.getElementById('sync-dot').textContent = '✓ 已發布';
+    toast('✓ 已儲存並發布，漲跌自動更新完成');
+  } catch(e) {
+    document.getElementById('sync-dot').textContent = '';
+    toast('發布失敗：' + e.message);
+  }
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  PROFIT ANALYSIS                                     ║
+// ╚══════════════════════════════════════════════════════╝
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type:'array' });
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' });
+      parseXlsx(raw, file.name);
+    } catch(e) { toast('解析失敗：' + e.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseXlsx(raw, fname) {
+  let headerIdx = -1, dateStr = '';
+  for (let i = 0; i < raw.length; i++) {
+    const r0 = String(raw[i][0] || '');
+    const m = r0.match(/\d{4}\/\d{2}\/\d{2}/);
+    if (m) dateStr = m[0];
+    if (String(raw[i][1]).includes('品項名稱')) { headerIdx = i; break; }
+  }
+  if (headerIdx < 0) { toast('找不到「品項名稱」欄位'); return; }
+
+  parsedXlsx = [];
+  for (let i = headerIdx + 1; i < raw.length; i++) {
+    const r = raw[i];
+    const name = String(r[1]||'').trim();
+    if (!name || name === '總計') continue;
+    const qty      = Number(r[3]) || 0;
+    const taxTotal = Number(r[9]) || 0;
+    const spec     = String(r[2]||'').trim();
+    if (!qty && !taxTotal) continue;
+    parsedXlsx.push({ name, spec, qty, taxTotal });
+  }
+
+  analyzeProfit(dateStr, fname);
+}
+
+function findItemCost(name) {
+  // exact name
+  let it = state.items.find(i => i.name === name);
+  if (it) return it;
+  // name stripped of /KG etc
+  const base = name.replace(/[/／].*$/, '').trim();
+  it = state.items.find(i => i.name.replace(/[/／].*$/, '').trim() === base);
+  if (it) return it;
+  // partial
+  it = state.items.find(i => i.name.includes(name) || name.includes(i.name.replace(/[/／].*$/, '').trim()));
+  return it || null;
+}
+
+function analyzeProfit(dateStr, fname) {
+  analysisRows = parsedXlsx.map(r => {
+    const it = findItemCost(r.name);
+    let estCost = 0, profit = 0, margin = null, matchType = 'none';
+    if (it) {
+      const cost = Number(it.cost) || 0;
+      if (cost > 0) {
+        estCost = cost * r.qty;
+        profit  = r.taxTotal - estCost;
+        margin  = r.taxTotal > 0 ? profit / r.taxTotal * 100 : 0;
+        matchType = it.name === r.name ? 'exact' : 'fuzzy';
+      } else { matchType = 'no-cost'; }
+    }
+    return { ...r, it, estCost, profit, margin, matchType };
+  });
+
+  renderProfitResult(dateStr, fname);
+  document.getElementById('profit-upload').style.display = 'none';
+  document.getElementById('profit-result').style.display = 'block';
+}
+
+function renderProfitResult(dateStr, fname) {
+  document.getElementById('p-title').textContent = fname || '利潤分析';
+  document.getElementById('p-date').textContent  = dateStr ? `單據日期：${dateStr}` : '';
+
+  const matched  = analysisRows.filter(r => r.matchType === 'exact' || r.matchType === 'fuzzy');
+  const unmatched = analysisRows.filter(r => r.matchType === 'none' || r.matchType === 'no-cost');
+  const totalRev    = analysisRows.reduce((s,r) => s + r.taxTotal, 0);
+  const matchedRev  = matched.reduce((s,r) => s + r.taxTotal, 0);
+  const totalCost   = matched.reduce((s,r) => s + r.estCost, 0);
+  const totalProfit = matched.reduce((s,r) => s + r.profit, 0);
+  const margin      = matchedRev > 0 ? (totalProfit / matchedRev * 100).toFixed(1) : 0;
+
+  document.getElementById('p-match-badge').innerHTML =
+    `<span class="badge bg">✓ ${matched.length}</span> ` +
+    (unmatched.length ? `<span class="badge bo">未比對 ${unmatched.length}</span>` : '');
+
+  document.getElementById('p-rev').textContent    = 'NT$' + fmt(totalRev);
+  document.getElementById('p-cost').textContent   = 'NT$' + fmt(totalCost);
+  document.getElementById('p-profit').textContent = 'NT$' + fmt(totalProfit);
+  document.getElementById('p-margin').textContent = margin + '%';
+  document.getElementById('p-covered').textContent = matched.length + ' / ' + analysisRows.length;
+
+  if (unmatched.length) {
+    document.getElementById('p-unmatched').style.display = 'block';
+    document.getElementById('p-unmatched-list').innerHTML =
+      unmatched.map(r => `<span style="display:inline-block;margin:3px;padding:3px 8px;background:#fff3e8;border:1px solid #fcd5a0;border-radius:4px;font-size:11px">${r.name} <b style="color:var(--orange)">NT$${fmt(r.taxTotal)}</b></span>`).join('');
+  }
+
+  renderProfitTable();
+
+  // store for saving
+  renderProfitResult._last = { dateStr, fname, totalRev, totalCost, totalProfit, margin, matchedRev };
+}
+
+function renderProfitTable() {
+  const body = document.getElementById('profit-body');
+  body.innerHTML = '';
+  const rows = profitFilter === 'ok'   ? analysisRows.filter(r => r.matchType==='exact'||r.matchType==='fuzzy')
+             : profitFilter === 'miss' ? analysisRows.filter(r => r.matchType==='none'||r.matchType==='no-cost')
+             : analysisRows;
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    const hasCost = r.matchType === 'exact' || r.matchType === 'fuzzy';
+    const profCls = !hasCost ? 'cr' : r.profit > 0 ? 'cg' : r.profit < 0 ? 'cr' : '';
+    const badge = r.matchType==='exact' ? '<span style="color:var(--green);font-size:11px">● 完全</span>'
+                : r.matchType==='fuzzy' ? '<span style="color:var(--orange);font-size:11px">● 模糊</span>'
+                : r.matchType==='no-cost' ? '<span style="color:#aaa;font-size:11px">● 無成本</span>'
+                : '<span style="color:var(--red);font-size:11px">● 未比對</span>';
+    tr.innerHTML = `
+      <td style="font-weight:600">${r.name}</td>
+      <td style="color:var(--muted);font-size:11px">${r.spec}</td>
+      <td class="r">${r.qty}</td>
+      <td class="r">NT$${fmt(r.taxTotal)}</td>
+      <td class="r">${hasCost ? fmt(r.it?.cost||0) : '—'}</td>
+      <td class="r">${hasCost ? 'NT$'+fmt(r.estCost) : '—'}</td>
+      <td class="r"><span class="${profCls}">${hasCost ? (r.profit>=0?'+':'')+fmt(r.profit) : '—'}</span></td>
+      <td class="r">${r.margin!==null ? r.margin.toFixed(1)+'%' : '—'}</td>
+      <td>${badge}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function filterProfit(f) { profitFilter = f; renderProfitTable(); }
+function toggleUnmatched() {
+  const el = document.getElementById('p-unmatched-list');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function resetUpload() {
+  document.getElementById('profit-result').style.display = 'none';
+  document.getElementById('profit-upload').style.display = 'block';
+  document.getElementById('xlsx-input').value = '';
+}
+
+function saveProfitRecord() {
+  const last = renderProfitResult._last;
+  if (!last) return;
+  const record = {
+    date:     last.dateStr || new Date().toISOString().slice(0,10),
+    fname:    last.fname || '',
+    rev:      last.totalRev,
+    cost:     last.totalCost,
+    profit:   last.totalProfit,
+    margin:   last.margin,
+    rows:     analysisRows.map(r => ({name:r.name,spec:r.spec,qty:r.qty,taxTotal:r.taxTotal,estCost:r.estCost,profit:r.profit,margin:r.margin,matchType:r.matchType})),
+    savedAt:  new Date().toISOString()
+  };
+  // Deduplicate by date+fname
+  const idx = state.history.findIndex(h => h.date === record.date && h.fname === record.fname);
+  if (idx >= 0) state.history[idx] = record;
+  else state.history.unshift(record);
+  saveLocal();
+  toast('✓ 已儲存紀錄');
+}
+
+function exportProfit() {
+  if (!analysisRows.length) return;
+  const rows = [['品名','規格','數量','含稅小計','成本/單位','估算成本','利潤','利潤率%','狀態']];
+  analysisRows.forEach(r => rows.push([
+    r.name, r.spec, r.qty, r.taxTotal,
+    r.it?.cost||'', r.estCost.toFixed(0), r.profit.toFixed(0),
+    r.margin!==null?r.margin.toFixed(1):'', r.matchType
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '利潤分析');
+  XLSX.writeFile(wb, `採鮮利潤_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  HISTORY                                             ║
+// ╚══════════════════════════════════════════════════════╝
+function renderHistory() {
+  const hist = (state.history || []);
+  const now  = new Date();
+  let w7Rev=0,w7P=0,m30Rev=0,m30P=0;
+  hist.forEach(h => {
+    const diff = (now - new Date(h.date)) / 86400000;
+    if (diff<=7)  { w7Rev  += h.rev;  w7P  += h.profit; }
+    if (diff<=30) { m30Rev += h.rev;  m30P += h.profit; }
+  });
+  document.getElementById('hist-stats').innerHTML = `
+    <div class="stat"><div class="stat-lbl">近7天營收</div><div class="stat-val co">NT$${fmt(w7Rev)}</div></div>
+    <div class="stat"><div class="stat-lbl">近7天利潤</div><div class="stat-val cg">NT$${fmt(w7P)}</div></div>
+    <div class="stat"><div class="stat-lbl">近30天營收</div><div class="stat-val co">NT$${fmt(m30Rev)}</div></div>
+    <div class="stat"><div class="stat-lbl">近30天利潤</div><div class="stat-val cg">NT$${fmt(m30P)}</div></div>
+    <div class="stat"><div class="stat-lbl">已記錄筆數</div><div class="stat-val cp">${hist.length}</div></div>`;
+
+  const list = document.getElementById('hist-list');
+  if (!hist.length) { list.innerHTML = '<div style="text-align:center;padding:28px;color:var(--muted)">尚無紀錄</div>'; return; }
+  list.innerHTML = '';
+  hist.forEach((h, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #f0f4f0;flex-wrap:wrap;gap:6px';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:700">${h.date} <span style="font-size:11px;color:var(--muted);font-weight:400">${h.fname||''}</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          營收 NT$${fmt(h.rev)}｜成本 NT$${fmt(h.cost)}｜利潤率 ${Number(h.margin||0).toFixed(1)}%
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:16px;font-weight:900;color:var(--green)">NT$${fmt(h.profit)}</div>
+        <button class="btn-o btn-xs" onclick="viewHistory(${idx})">查看</button>
+        <button class="btn-r btn-xs" onclick="deleteHistory(${idx})">刪除</button>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+function viewHistory(idx) {
+  const h = state.history[idx];
+  if (!h) return;
+  analysisRows = h.rows || [];
+  profitFilter = 'all';
+  renderProfitResult._last = { dateStr:h.date, fname:h.fname, totalRev:h.rev, totalCost:h.cost, totalProfit:h.profit, margin:h.margin };
+  renderProfitResult(h.date, h.fname);
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelector('[data-tab=profit]').classList.add('active');
+  document.getElementById('view-profit').classList.add('active');
+  document.getElementById('profit-upload').style.display = 'none';
+  document.getElementById('profit-result').style.display = 'block';
+}
+
+function deleteHistory(idx) {
+  if (!confirm('刪除此筆紀錄？')) return;
+  state.history.splice(idx, 1);
+  saveLocal();
+  renderHistory();
+}
+
+function exportAllHistory() {
+  const rows = [['日期','檔案','品名','規格','數量','含稅小計','估算成本','利潤','利潤率%']];
+  (state.history || []).forEach(h => {
+    (h.rows || []).forEach(r => rows.push([h.date, h.fname, r.name, r.spec, r.qty, r.taxTotal, r.estCost||'', r.profit||'', r.margin||'']));
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '歷史紀錄');
+  XLSX.writeFile(wb, '採鮮歷史利潤.xlsx');
+}
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  HELPERS                                             ║
+// ╚══════════════════════════════════════════════════════╝
+function fmt(n) { return Number(n||0).toLocaleString('zh-TW',{maximumFractionDigits:0}); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+init();
+</script>
+</body>
+</html>
