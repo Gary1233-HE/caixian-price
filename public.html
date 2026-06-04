@@ -5,233 +5,175 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>當日報價單</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Noto Sans TC', 'PingFang TC', sans-serif;
-    background: #f7f9f7;
-    color: #111;
-    font-size: 14px;
-    -webkit-font-smoothing: antialiased;
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans TC', 'PingFang TC', sans-serif;
+  background: #f7f9f7; color: #111; font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 980px; margin: 0 auto; background: #fff; min-height: 100vh; padding: 24px 20px 40px; }
 
-  /* ── Page wrapper ── */
-  .page {
-    max-width: 960px;
-    margin: 0 auto;
-    background: #fff;
-    min-height: 100vh;
-    padding: 24px 20px 40px;
-  }
+/* header */
+.hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+.shop-name { font-size: 26px; font-weight: 900; color: #2d6a2d; }
+.shop-info { font-size: 13px; color: #444; margin-top: 6px; line-height: 1.9; }
+.date-block { text-align: right; }
+.date-label { font-size: 17px; font-weight: 800; color: #222; }
+.date-value { font-size: 13px; color: #444; margin-top: 4px; }
+.date-note  { font-size: 12px; color: #c05a00; margin-top: 2px; }
+.updated { font-size: 11px; color: #aaa; text-align: right; margin-top: 4px; }
 
-  /* ── Header ── */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .shop-name {
-    font-size: 28px;
-    font-weight: 900;
-    color: #2d6a2d;
-    letter-spacing: -.01em;
-    line-height: 1.1;
-  }
-  .shop-info { font-size: 13px; color: #444; margin-top: 6px; line-height: 1.9; }
-  .date-block { text-align: right; }
-  .date-label {
-    font-size: 18px; font-weight: 800; color: #222;
-  }
-  .date-value { font-size: 14px; color: #444; margin-top: 4px; }
-  .date-note { font-size: 12px; color: #c05a00; margin-top: 2px; }
+/* 2-col grid */
+.cats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width: 640px) { .cats-grid { grid-template-columns: 1fr; } }
+.cat-col { display: flex; flex-direction: column; gap: 14px; }
 
-  /* ── Grid ── */
-  .cols {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0;
-    border: 1.5px solid #e0e8e0;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  @media (max-width: 700px) {
-    .cols { grid-template-columns: 1fr; }
-    .col { border-right: none !important; border-bottom: 1.5px solid #e0e8e0; }
-    .col:last-child { border-bottom: none; }
-  }
-  .col { border-right: 1.5px solid #e0e8e0; }
-  .col:last-child { border-right: none; }
+/* category block */
+.cat-block { border: 1px solid #e0e8e0; border-radius: 6px; overflow: hidden; }
+.cat-hdr { padding: 8px 12px; font-size: 13px; font-weight: 800; color: #fff; }
+.col-lbl { display: flex; justify-content: space-between; padding: 4px 10px; font-size: 10px; font-weight: 700; color: #888; border-bottom: 1px solid #e8eee8; text-transform: uppercase; letter-spacing: .04em; }
+.item { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; border-bottom: 1px solid #f0f5f0; font-size: 13px; }
+.item:last-child { border-bottom: none; }
+.item-name { color: #222; flex: 1; padding-right: 8px; }
+.item-price { font-weight: 700; white-space: nowrap; }
+.up   { color: #c0392b; }
+.down { color: #1565c0; }
+.arrow { font-size: 11px; }
 
-  /* ── Category header ── */
-  .cat-header {
-    padding: 10px 12px;
-    font-size: 14px;
-    font-weight: 800;
-    color: #fff;
-    letter-spacing: .03em;
-  }
-
-  /* ── Column header row ── */
-  .col-labels {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #888;
-    border-bottom: 1px solid #e8eee8;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-  }
-
-  /* ── Item rows ── */
-  .item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 10px;
-    border-bottom: 1px solid #f0f4f0;
-    font-size: 13px;
-  }
-  .item:last-child { border-bottom: none; }
-  .item-name { color: #222; flex: 1; padding-right: 8px; }
-  .item-price {
-    font-weight: 700;
-    color: #111;
-    white-space: nowrap;
-  }
-  .item-price.up   { color: #c0392b; }
-  .item-price.down { color: #1565c0; }
-  .arrow { font-size: 11px; margin-left: 2px; }
-
-  /* ── Footer ── */
-  .footer {
-    margin-top: 18px;
-    text-align: center;
-    font-size: 12px;
-    color: #888;
-    line-height: 2;
-  }
-  .footer-bold { font-weight: 700; color: #2d6a2d; font-size: 14px; }
-
-  /* ── Loading / Error ── */
-  .status {
-    text-align: center;
-    padding: 40px;
-    color: #888;
-    font-size: 15px;
-  }
-
-  /* ── Updated time ── */
-  .updated {
-    font-size: 11px;
-    color: #aaa;
-    text-align: right;
-    margin-top: -14px;
-    margin-bottom: 12px;
-  }
+/* footer */
+.footer { margin-top: 16px; text-align: center; font-size: 12px; color: #888; line-height: 2; }
+.footer b { font-weight: 800; color: #2d6a2d; font-size: 13px; }
+.loading { text-align: center; padding: 40px; color: #888; font-size: 15px; }
 </style>
 </head>
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
 
-<div class="page" id="app">
-  <div class="status">載入中…</div>
-</div>
+<div class="page" id="app"><div class="loading">載入中…</div></div>
 
 <script>
-// ════════════════════════════════════════════════════════════
-// ★ 設定你的 Firebase（與 admin.html 相同）
-// ════════════════════════════════════════════════════════════
 const FB_PROJECT_ID = 'caixian-price-619c4';
 const FB_API_KEY    = 'AIzaSyDyIgF1T3qwVUdxTtfuo9SRwpiEQpfMaIA';
-// ════════════════════════════════════════════════════════════
+
+// 類別定義（順序＝顯示順序，左欄前兩個，右欄後兩個）
+const CATS = [
+  {id:'c1', name:'🥬 葉菜類',    color:'#3a8a3a'},
+  {id:'c2', name:'🍈 瓜果類',    color:'#c05a00'},
+  {id:'c4', name:'🔪 蔬菜截切',  color:'#1a6a6a'},
+  {id:'c3', name:'🍄 根莖豆菇類',color:'#6a3aaa'},
+];
 
 function today() {
   const d = new Date();
   return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
 }
 
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 計算截切售價
+function cutSellPrice(item, allItems) {
+  const src = allItems.find(i => i.id === item.srcId);
+  if (!src) return 0;
+  const srcSell = calcSellPrice(src, allItems);
+  if (!srcSell) return 0;
+  if ((item.cutType||'whole') === 'whole') {
+    return Math.round(srcSell + (Number(item.cutFee)||0));
+  } else {
+    const weight = Number(item.srcWeight)||1;
+    const yield_ = Number(item.cutYield)||1;
+    const addon  = Number(item.cutAddon)||0;
+    return Math.round((srcSell / weight) / yield_ + addon);
+  }
+}
+
+function calcSellPrice(item, allItems) {
+  if (item.cat === 'c4' && item.srcId) return cutSellPrice(item, allItems);
+  const cost = Number(item.cost)||0;
+  if (!cost) return Number(item.price)||0;
+  if (item.type === 'manual') return Number(item.price)||0;
+  if (item.type === 'fixed')  return cost + (Number(item.markup)||0);
+  return Math.round(cost * (1 + (Number(item.markup)||0) / 100));
+}
+
 function render(data) {
-  const meta = data.meta || {};
-  const cats = data.categories || [];
+  const meta  = data.meta  || {};
+  const items = data.items || [];
   const updatedAt = data.updatedAt ? new Date(data.updatedAt).toLocaleString('zh-TW') : '';
 
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="header">
+  // Build category blocks
+  const leftCats  = [CATS[0], CATS[1]]; // c1, c2
+  const rightCats = [CATS[2], CATS[3]]; // c4, c3
+
+  function buildCol(cats) {
+    return `<div class="cat-col">${cats.map(cat => {
+      const catItems = items.filter(it => it.cat === cat.id && it.visible !== false);
+      if (!catItems.length) return '';
+      const rows = catItems.map(item => {
+        const sp = calcSellPrice(item, items);
+        const cls  = item.trend === 'up' ? 'up' : item.trend === 'down' ? 'down' : '';
+        const arrow = item.trend === 'up' ? ' <span class="arrow">↑</span>'
+                    : item.trend === 'down' ? ' <span class="arrow">↓</span>' : '';
+        return `<div class="item">
+          <span class="item-name">${esc(item.name)}</span>
+          <span class="item-price ${cls}">${sp > 0 ? sp : '—'}${arrow}</span>
+        </div>`;
+      }).join('');
+      return `<div class="cat-block">
+        <div class="cat-hdr" style="background:${esc(cat.color)}">${esc(cat.name)}</div>
+        <div class="col-lbl"><span>品項</span><span>單價</span></div>
+        ${rows}
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div class="hdr">
       <div>
-        <div class="shop-name">${esc(meta.name || '農產行')}</div>
+        <div class="shop-name">${esc(meta.name||'採鮮農產行')}</div>
         <div class="shop-info">
-          聯絡人：${esc(meta.contact || '')}<br>
-          手機：${esc(meta.phone || '')}<br>
-          LINE：${esc(meta.line || '')}
+          聯絡人：${esc(meta.contact||'')}<br>
+          手機：${esc(meta.phone||'')}<br>
+          LINE：${esc(meta.line||'')}
         </div>
       </div>
       <div class="date-block">
         <div class="date-label">當日報價單</div>
         <div class="date-value">報價日期：${today()}</div>
         <div class="date-note">※ 本報價單以當日行情價為準</div>
+        ${updatedAt ? `<div class="updated">最後更新：${updatedAt}</div>` : ''}
       </div>
     </div>
 
-    ${updatedAt ? `<div class="updated">最後更新：${updatedAt}</div>` : ''}
-
-    <div class="cols">
-      ${cats.map(cat => `
-        <div class="col">
-          <div class="cat-header" style="background:${esc(cat.color||'#3a8a3a')}">${esc(cat.name)}</div>
-          <div class="col-labels"><span>品項</span><span>單價</span></div>
-          ${(cat.items||[]).map(item => {
-            const cls = item.trend === 'up' ? 'up' : item.trend === 'down' ? 'down' : '';
-            const arrow = item.trend === 'up' ? '<span class="arrow">↑</span>' : item.trend === 'down' ? '<span class="arrow">↓</span>' : '';
-            return `
-              <div class="item">
-                <span class="item-name">${esc(item.name)}</span>
-                <span class="item-price ${cls}">${item.price}${arrow}</span>
-              </div>`;
-          }).join('')}
-        </div>
-      `).join('')}
+    <div class="cats-grid">
+      ${buildCol(leftCats)}
+      ${buildCol(rightCats)}
     </div>
 
     <div class="footer">
-      <div>※ ${esc(meta.note || '價格以當日市場行情為準，如有異動恕不另行通知')}</div>
-      <div class="footer-bold">感謝您的支持與愛護 🙏</div>
-    </div>
-  `;
+      <div>※ ${esc(meta.note||'價格以當日市場行情為準，如有異動恕不另行通知')}</div>
+      <div><b>感謝您的支持與愛護 🙏</b></div>
+    </div>`;
 }
 
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── Load from Firebase ──────────────────────────────────────
 async function load() {
-  if (!FB_PROJECT_ID || !FB_API_KEY) {
-    // Try localStorage fallback
-    const local = localStorage.getItem('price_local');
-    if (local) { render(JSON.parse(local)); return; }
-    document.getElementById('app').innerHTML = '<div class="status">⚠ 請在 public.html 頂部填入 Firebase 設定</div>';
-    return;
-  }
-
   try {
-    const app = firebase.apps[0] || firebase.initializeApp({ apiKey: FB_API_KEY, projectId: FB_PROJECT_ID, authDomain: `${FB_PROJECT_ID}.firebaseapp.com` });
+    const app = firebase.apps[0] || firebase.initializeApp({
+      apiKey: FB_API_KEY,
+      projectId: FB_PROJECT_ID,
+      authDomain: `${FB_PROJECT_ID}.firebaseapp.com`
+    });
     const db = app.firestore();
-
-    // Real-time listener — updates instantly when admin saves
     db.collection('price_board').doc('current').onSnapshot(snap => {
       if (snap.exists) render(snap.data());
-      else document.getElementById('app').innerHTML = '<div class="status">尚無報價資料</div>';
+      else document.getElementById('app').innerHTML = '<div class="loading">尚無報價資料</div>';
     }, err => {
-      document.getElementById('app').innerHTML = `<div class="status">載入失敗：${err.message}</div>`;
+      document.getElementById('app').innerHTML = `<div class="loading">載入失敗：${err.message}</div>`;
     });
   } catch(e) {
-    document.getElementById('app').innerHTML = `<div class="status">錯誤：${e.message}</div>`;
+    document.getElementById('app').innerHTML = `<div class="loading">錯誤：${e.message}</div>`;
   }
 }
 
