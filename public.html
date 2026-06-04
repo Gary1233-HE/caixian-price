@@ -23,33 +23,36 @@ body {
 .date-note  { font-size: 12px; color: #c05a00; margin-top: 3px; }
 .updated    { font-size: 11px; color: #bbb; margin-top: 4px; }
 
-/* ── Grid：電腦三欄，手機兩欄 ── */
+/* ── Grid：電腦三欄（截切+葉菜同欄），手機兩欄 ── */
 .cats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* 電腦：col1+col3 同一欄（合併），col2，col4 → 實際 3 視覺欄 */
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 0;
   border: 1.5px solid #dde8dd;
   border-radius: 6px;
   overflow: hidden;
 }
-.cat-col {
-  display: flex;
-  flex-direction: column;
-  border-right: 1.5px solid #dde8dd;
-}
-.cat-col:last-child { border-right: none; }
+/* 電腦：col1(截切) 和 col3(葉菜) 合為左欄，col2(瓜果) 中欄，col4(菇) 右欄 */
+.cat-col { display:flex; flex-direction:column; border-right:1.5px solid #dde8dd; }
+.cat-col:last-child { border-right:none; }
 
-@media (max-width: 700px) {
-  .cats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  /* 手機：截切跑到第三格，讓葉菜和瓜果各占一欄，截切和根莖各占一欄 */
-  .cat-col:nth-child(3) { border-right: 1.5px solid #dde8dd; }
-  .cat-col:nth-child(4) { border-right: none; }
-  /* 在手機加底線 */
-  .cat-col { border-bottom: 1.5px solid #dde8dd; }
+/* 電腦 4 欄改為視覺 3 欄：col1+col3 合並 */
+@media (min-width: 769px) {
+  .cats-grid { grid-template-columns: 1fr 1fr 1fr; }
+  /* col1 = 截切，col2 = 瓜果，col3 = 葉菜（放在截切下）→ 改用 order */
+  .cat-col:nth-child(1) { grid-column:1; grid-row:1; }
+  .cat-col:nth-child(2) { grid-column:2; grid-row:1/3; }
+  .cat-col:nth-child(3) { grid-column:1; grid-row:2; border-top:1.5px solid #dde8dd; }
+  .cat-col:nth-child(4) { grid-column:3; grid-row:1/3; }
+}
+
+@media (max-width: 768px) {
+  .cats-grid { grid-template-columns: repeat(2, 1fr); }
+  .cat-col { border-bottom:1.5px solid #dde8dd; border-right:1.5px solid #dde8dd; }
+  .cat-col:nth-child(even) { border-right:none; }
   .cat-col:nth-child(3),
-  .cat-col:nth-child(4) { border-bottom: none; }
+  .cat-col:nth-child(4)    { border-bottom:none; }
 }
 
 /* ── Category block ── */
@@ -181,9 +184,10 @@ function render(data) {
     </div>
 
     <div class="cats-grid">
-      <div class="cat-col">${buildCol(CATS_LEFT,  all)}</div>
-      <div class="cat-col">${buildCol(CATS_MID,   all)}</div>
-      <div class="cat-col">${buildCol(CATS_RIGHT, all)}</div>
+      <div class="cat-col">${buildCol([CATS_LEFT[0]], all)}</div>
+      <div class="cat-col">${buildCol(CATS_MID,       all)}</div>
+      <div class="cat-col">${buildCol([CATS_LEFT[1]], all)}</div>
+      <div class="cat-col">${buildCol(CATS_RIGHT,     all)}</div>
     </div>
 
     <div class="footer">
