@@ -9,82 +9,57 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#fff;color:#111;font-size:14px;-webkit-font-smoothing:antialiased}
-.page{max-width:1080px;margin:0 auto;padding:28px 24px 48px}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#f0f7e6;color:#1a2a1a;-webkit-font-smoothing:antialiased}
+.page{max-width:1080px;margin:0 auto;background:#fffef8;min-height:100vh;padding:28px 24px 48px;box-shadow:0 0 24px rgba(0,0,0,.08)}
 
 /* ── Header ── */
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:12px;flex-wrap:wrap}
-.shop-name{font-size:32px;font-weight:900;color:#2d6a2d}
-.shop-info{font-size:14px;color:#444;margin-top:8px;line-height:2}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.shop-name{font-size:48px;font-weight:900;color:#66bb6a;letter-spacing:-.01em}
+.shop-info{font-size:17px;color:#555;margin-top:10px;line-height:2.2}
 .date-block{text-align:right}
-.date-label{font-size:20px;font-weight:900;color:#222}
-.date-value{font-size:14px;color:#444;margin-top:4px}
-.date-note{font-size:12px;color:#c05a00;margin-top:3px}
-.updated{font-size:11px;color:#bbb;margin-top:4px}
+.date-label{font-size:28px;font-weight:900;color:#333}
+.date-value{font-size:17px;color:#555;margin-top:6px}
+.date-note{font-size:15px;color:#d84315;margin-top:4px}
+.updated{font-size:14px;color:#aaa;margin-top:4px}
 
 /* ── 三欄 Grid ── */
-.price-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  border:1.5px solid #dde8dd;
-  border-radius:6px;
-  overflow:hidden;
-}
-.price-col{
-  border-right:1.5px solid #dde8dd;
-  display:flex;
-  flex-direction:column;
-}
+.price-grid{display:grid;grid-template-columns:1fr 1fr 1fr;border:2px solid #b5d68a;border-radius:8px;overflow:hidden}
+.price-col{border-right:2px solid #b5d68a;display:flex;flex-direction:column}
 .price-col:last-child{border-right:none}
 
 /* ── Category header ── */
-.cat-hdr{
-  padding:10px 14px;
-  font-size:14px;font-weight:900;color:#fff;
-  letter-spacing:.02em;
-}
-.col-lbl{
-  display:flex;justify-content:space-between;
-  padding:5px 12px;
-  font-size:11px;font-weight:700;color:#999;
-  border-bottom:1px solid #e8eee8;
-  text-transform:uppercase;letter-spacing:.04em;
-}
+.cat-hdr{padding:12px 14px;font-size:20px;font-weight:900;color:#fff;letter-spacing:.02em}
+.col-lbl{display:flex;justify-content:space-between;padding:6px 14px;font-size:16px;font-weight:700;color:#7a8c6a;border-bottom:1px solid #d4edaa;background:#f5fae8;text-transform:uppercase;letter-spacing:.04em}
 
 /* ── Item rows ── */
-.item{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:6px 12px;
-  border-bottom:1px solid #f0f5f0;
-  font-size:14px;
-}
+.item{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #eef7dd;font-size:22px}
 .item:last-child{border-bottom:none}
-.item-name{color:#222;flex:1;padding-right:10px}
-.item-price{font-weight:900;white-space:nowrap;font-size:15px}
-.item-price.up{color:#c0392b}
+.item:nth-child(even){background:#fafef2}
+.item-name{color:#2a3a1a;flex:1;padding-right:2px}
+.item-price{white-space:nowrap;font-size:23px;color:#2a3a1a}
+.item-price.up{color:#c62828}
 .item-price.down{color:#1565c0}
-.arrow{font-size:12px;margin-left:1px}
-.no-price{color:#bbb;font-weight:400;font-size:13px}
+.arrow{font-size:16px;margin-left:2px}
 
 /* 截切與葉菜分隔 */
-.cat-divider{border-top:2px solid #dde8dd}
+.cat-divider{border-top:2px solid #b5d68a}
 
 /* ── Footer ── */
-.footer{margin-top:18px;text-align:center;font-size:12px;color:#888;line-height:2.2}
-.footer-bold{font-weight:900;color:#2d6a2d;font-size:14px}
+.footer{margin-top:20px;text-align:center;font-size:17px;color:#7a8c6a;line-height:2.2}
+.footer-bold{font-weight:900;color:#3d8b37;font-size:20px}
+
+/* ── 類別 header 顏色（田園亮色系） ── */
+/* 葉菜：草綠  瓜果：南瓜橘  截切：青翠  菇：薰衣草紫 */
 
 /* ── 手機：兩欄 ── */
 @media(max-width:700px){
   .price-grid{grid-template-columns:1fr 1fr}
   .price-col:nth-child(2){border-right:none}
-  .price-col:nth-child(3){border-top:1.5px solid #dde8dd;border-right:1.5px solid #dde8dd}
-  .price-col:nth-child(4){border-top:1.5px solid #dde8dd;border-right:none}
+  .price-col:nth-child(3){border-top:2px solid #b5d68a;border-right:2px solid #b5d68a}
+  .price-col:nth-child(4){border-top:2px solid #b5d68a;border-right:none}
 }
 
 .loading{text-align:center;padding:60px;color:#888;font-size:15px}
-#dl-btn{position:fixed;top:14px;right:14px;z-index:999;background:#2d6a2d;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);font-family:inherit;transition:.15s}
-#dl-btn:hover{background:#235a23}
-@media print{#dl-btn{display:none}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -119,9 +94,8 @@ function cutPrice(item, all) {
     const sp = calcSell(src, all);
     return sp ? Math.round(sp + (Number(item.cutFee)||0)) : 0;
   }
-  // 散切：自動找同原料整件切
-  const whole = all.find(i => i.cat==='c4' && i.srcId===item.srcId && (i.cutType||'whole')==='whole' && i.id!==item.id);
-  const base  = whole ? calcSell(whole, all) : calcSell(src, all);
+  // 散切：src 可能是整件切或原料，直接用其售價
+  const base = calcSell(src, all);
   if (!base) return 0;
   const w = Number(item.srcWeight)||1;
   const y = Number(item.cutYield)||1;
@@ -132,18 +106,16 @@ function cutPrice(item, all) {
 // ── 建立品項列 ───────────────────────────────────────────────────────────────
 function itemRow(item, all) {
   const sp   = calcSell(item, all);
+  if (!sp) return ''; // 沒有金額不顯示
   const cls  = item.trend==='up' ? ' up' : item.trend==='down' ? ' down' : '';
   const arrow = item.trend==='up'   ? `<span class="arrow">↑</span>`
               : item.trend==='down' ? `<span class="arrow">↓</span>` : '';
-  const price = sp > 0
-    ? `<span class="item-price${cls}">${sp}${arrow}</span>`
-    : `<span class="no-price">暫無</span>`;
-  return `<div class="item"><span class="item-name">${esc(item.name)}</span>${price}</div>`;
+  return `<div class="item"><span class="item-name">${esc(item.name)}</span><span class="item-price${cls}">${sp}${arrow}</span></div>`;
 }
 
 // ── 建立類別區塊 ─────────────────────────────────────────────────────────────
 function catBlock(cat, all, divider) {
-  const rows = all.filter(i => i.cat===cat.id && i.visible!==false);
+  const rows = all.filter(i => i.cat===cat.id && i.visible!==false && calcSell(i, all) > 0);
   if (!rows.length) return '';
   return `
     ${divider ? '<div class="cat-divider"></div>' : ''}
@@ -159,9 +131,9 @@ function render(data) {
   const upd  = data.updatedAt ? new Date(data.updatedAt).toLocaleString('zh-TW') : '';
 
   // 欄位定義
-  const COL_LEFT  = [{id:'c4',name:'🔪 蔬菜截切',color:'#1a6a6a'},{id:'c1',name:'🥬 葉菜類',color:'#3a8a3a'}];
-  const COL_MID   = [{id:'c2',name:'🍈 瓜果類',  color:'#c05a00'}];
-  const COL_RIGHT = [{id:'c3',name:'🍄 菇與其他',color:'#6a3aaa'}];
+  const COL_LEFT  = [{id:'c4',name:'🔪 蔬菜截切',color:'#00897b'},{id:'c1',name:'🥬 葉菜類',color:'#4caf50'}];
+  const COL_MID   = [{id:'c2',name:'🍈 瓜果類',  color:'#ff8f00'}];
+  const COL_RIGHT = [{id:'c3',name:'🍄 菇與其他',color:'#8d6e63'}];
 
   function buildCol(cats) {
     return cats.map((cat, i) => catBlock(cat, all, i > 0)).join('');
