@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採鮮農產行｜現場報價</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#f4f6f4;color:#111;font-size:13px}
+
+/* ── Toolbar ── */
+.toolbar{background:#1a6a6a;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.toolbar-title{font-size:15px;font-weight:900}
+.toolbar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-weight:700;font-size:12px;padding:6px 12px;transition:.15s}
+.btn-w{background:#fff;color:#1a6a6a}.btn-w:hover{background:#e0f0f0}
+.btn-g{background:#2d6a2d;color:#fff}.btn-g:hover{background:#235a23}
+.btn-gh{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}.btn-gh:hover{background:rgba(255,255,255,.28)}
+.btn-sm{padding:4px 9px;font-size:11px}
+
+/* ── Settings bar ── */
+.settings-bar{background:#fff;border-bottom:1px solid #dde8dd;padding:8px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.settings-bar label{font-size:11px;color:#888;font-weight:700;margin-right:3px}
+.settings-bar input{border:1px solid #dde8dd;border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit}
+#total-bar{background:#1a6a6a;color:#fff;padding:6px 16px;display:flex;align-items:center;justify-content:space-between}
+.total-label{font-size:12px;opacity:.8}
+.total-val{font-size:18px;font-weight:900}
+.checked-count{font-size:11px;opacity:.7;margin-left:8px}
+
+/* ── 三欄 Grid ── */
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0;background:#dde8dd;border-top:1px solid #dde8dd}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+
+.col{background:#f4f6f4;border-right:1px solid #dde8dd;display:flex;flex-direction:column}
+.col:last-child{border-right:none}
+
+/* ── 欄標題 + 全選 ── */
+.col-top{background:#fff;border-bottom:2px solid #dde8dd;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;position:sticky;top:93px;z-index:50}
+.col-select-all{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#1a6a6a;cursor:pointer;padding:3px 7px;border-radius:4px;border:1px solid #dde8dd;background:#fff}
+.col-select-all:hover{background:#e8f5f5}
+.col-select-all input{width:14px;height:14px;cursor:pointer}
+
+/* ── 類別區塊 ── */
+.cat-block{background:#fff;margin-bottom:1px}
+.cat-hdr{padding:7px 10px;font-weight:900;font-size:12px;color:#fff;letter-spacing:.02em}
+
+/* ── 品項行 ── */
+.item-row{display:grid;grid-template-columns:20px 1fr 72px;gap:6px;align-items:center;padding:4px 10px;border-bottom:1px solid #f0f5f0;background:#fff}
+.item-row:last-child{border-bottom:none}
+.item-row.checked{background:#f0faf0}
+.item-row.zero{opacity:.45}
+.item-cb{width:15px;height:15px;cursor:pointer}
+.item-name{font-size:12px;line-height:1.3}
+.price-input{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:3px 5px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;color:#1a6a6a;background:#fff}
+.price-input:disabled{background:#f8f8f8;color:#aaa}
+.item-row.checked .price-input{border-color:#1a6a6a;background:#fff}
+
+/* ── 預覽 Modal ── */
+#preview-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow:auto;padding:20px;justify-content:center;align-items:flex-start}
+.preview-wrap{background:#fff;border-radius:8px;overflow:hidden;max-width:680px;width:100%;margin:0 auto}
+.preview-toolbar{background:#1a6a6a;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+#qp-content{padding:28px 24px 36px}
+.qp-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.qp-shop{font-size:28px;font-weight:900;color:#2d6a2d}
+.qp-info{font-size:13px;color:#444;margin-top:6px;line-height:1.9}
+.qp-date-block{text-align:right}
+.qp-date-label{font-size:17px;font-weight:900}
+.qp-date-val{font-size:13px;color:#444;margin-top:3px}
+.qp-sub-note{font-size:12px;color:#c05a00;margin-top:2px}
+.qp-customer{font-size:14px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #eee}
+.qp-table{width:100%;border-collapse:collapse;border:1.5px solid #dde8dd;border-radius:6px;overflow:hidden}
+.qp-table th{background:#1a6a6a;color:#fff;padding:8px 12px;text-align:left;font-size:13px}
+.qp-table th.r{text-align:right}
+.qp-table td{padding:8px 12px;border-bottom:1px solid #f0f5f0;font-size:15px}
+.qp-table td.r{text-align:right;font-weight:700}
+.qp-table tr:nth-child(even) td{background:#f8fbf8}
+.qp-table tr:last-child td{border-bottom:none}
+.qp-total-row{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:14px}
+.qp-total-label{font-size:14px;font-weight:700;color:#555}
+.qp-total-val{font-size:24px;font-weight:900;color:#1a6a6a}
+.qp-footer{margin-top:16px;text-align:center;font-size:12px;color:#888;line-height:2}
+.qp-footer b{color:#2d6a2d;font-weight:900;font-size:13px}
+
+.loading{text-align:center;padding:30px;color:#aaa;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="toolbar-title">🔖 現場報價單</div>
+  <div class="toolbar-right">
+    <span id="count-badge" style="font-size:11px;opacity:.8">已選 0 項</span>
+    <button class="btn-gh btn-sm" onclick="clearAll()">清除</button>
+    <button class="btn-w" onclick="showPreview()">👁 預覽</button>
+    <button class="btn-g" onclick="downloadQuote()">📷 下載</button>
+  </div>
+</div>
+
+<!-- 設定欄 -->
+<div class="settings-bar">
+  <div><label>日期</label><input type="date" id="q-date" style="width:130px"></div>
+  <div><label>客戶</label><input type="text" id="q-customer" placeholder="客戶 / 餐廳名稱" style="width:160px"></div>
+  <div><label>備註</label><input type="text" id="q-note" placeholder="付款方式…" style="width:180px"></div>
+</div>
+
+<!-- 合計 -->
+<div id="total-bar">
+  <div>
+    <span class="total-label">合計金額</span>
+    <span class="checked-count" id="count-display">（已選 0 項）</span>
+  </div>
+  <span class="total-val" id="total-display">NT$0</span>
+</div>
+
+<!-- 全部全選 -->
+<div style="background:#fff;border-bottom:1px solid #dde8dd;padding:6px 14px;display:flex;align-items:center;justify-content:flex-end;gap:8px">
+  <label style="font-size:12px;color:#555;cursor:pointer;display:flex;align-items:center;gap:5px;font-weight:700">
+    <input type="checkbox" id="select-all-global" style="width:16px;height:16px;cursor:pointer">
+    全部全選
+  </label>
+</div>
+
+<!-- 三欄 -->
+<div class="grid" id="grid-container">
+  <div class="loading" style="grid-column:1/-1">載入中…</div>
+</div>
+
+<!-- 預覽 Modal -->
+<div id="preview-modal">
+  <div class="preview-wrap">
+    <div class="preview-toolbar">
+      <span style="font-weight:800">報價單預覽</span>
+      <button class="btn-w btn-sm" onclick="closePreview()">✕ 關閉</button>
+    </div>
+    <div id="qp-content">
+      <div class="qp-hdr">
+        <div>
+          <div class="qp-shop" id="qp-name">採鮮農產行</div>
+          <div class="qp-info" id="qp-info"></div>
+        </div>
+        <div class="qp-date-block">
+          <div class="qp-date-label">報價單</div>
+          <div class="qp-date-val" id="qp-date"></div>
+          <div class="qp-sub-note">※ 本報價單以當日行情價為準</div>
+          <div id="qp-customer-bottom" style="font-size:15px;font-weight:700;color:#333;margin-top:4px;text-align:right"></div>
+        </div>
+      </div>
+      <div class="qp-customer" id="qp-customer" style="display:none"></div>
+      <!-- 三欄報價表 -->
+      <div id="qp-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;border:1.5px solid #dde8dd;border-radius:6px;overflow:hidden;margin-top:14px"></div>
+
+      <div style="margin-top:14px">
+        <div id="qp-note-row" style="text-align:center;font-size:12px;color:#888;margin-bottom:4px"></div>
+        <div style="font-size:12px;color:#888;text-align:center">※ 本報價單以當日行情價為準</div>
+        <div style="text-align:center;font-size:14px;font-weight:900;color:#2d6a2d;margin-top:6px">感謝您的支持與愛護 🙏</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FB_PROJECT_ID = 'caixian-price-619c4';
+const FB_API_KEY    = 'AIzaSyDyIgF1T3qwVUdxTtfuo9SRwpiEQpfMaIA';
+
+// 欄位定義（三大欄）
+const COLS = [
+  [{id:'c4',name:'🔪 蔬菜截切',color:'#1a6a6a'}, {id:'c1',name:'🥬 葉菜類',color:'#3a8a3a'}],
+  [{id:'c2',name:'🍈 瓜果類',color:'#c05a00'}],
+  [{id:'c3',name:'🍄 菇與其他',color:'#6a3aaa'}],
+];
+
+let allItems = [];
+let meta = {};
+// checked[id] = true/false, prices[id] = number
+let checked = {};
+let prices  = {};
+
+// ── 計算售價 ─────────────────────────────────────────────────────────────────
+function calcSell(item) {
+  if (item.cat === 'c4' && item.srcId) {
+    const src = allItems.find(i => i.id === item.srcId);
+    if (!src) return 0;
+    const base = calcSell(src);
+    if (!base) return 0;
+    if ((item.cutType||'whole') === 'whole') return Math.round(base + (Number(item.cutFee)||0));
+    const w = Number(item.srcWeight)||1, y = Number(item.cutYield)||1, a = Number(item.cutAddon)||0;
+    return Math.round((base/w)/y + a);
+  }
+  const cost = Number(item.cost)||0;
+  if (!cost) return Number(item.price)||0;
+  if (item.type==='manual') return Number(item.price)||0;
+  if (item.type==='fixed')  return cost + (Number(item.markup)||0);
+  return Math.round(cost * (1 + (Number(item.markup)||0)/100));
+}
+
+// ── 渲染 ─────────────────────────────────────────────────────────────────────
+function render() {
+  const container = document.getElementById('grid-container');
+  container.innerHTML = '';
+
+  COLS.forEach((catList, colIdx) => {
+    const col = document.createElement('div');
+    col.className = 'col';
+
+    // 欄頂部 + 全選
+    const colTop = document.createElement('div');
+    colTop.className = 'col-top';
+    const colCatNames = catList.map(c => c.name).join('、');
+    const colIds = catList.flatMap(cat => allItems.filter(i => i.cat===cat.id && i.visible!==false && calcSell(i)>0).map(i=>i.id));
+    colTop.innerHTML = `
+      <span style="font-size:11px;color:#888;font-weight:700">${colCatNames}</span>
+      <label class="col-select-all">
+        <input type="checkbox" id="sel-all-${colIdx}" onchange="selectCol(${colIdx}, this.checked)">
+        全選
+      </label>`;
+    col.appendChild(colTop);
+
+    catList.forEach(cat => {
+      const items = allItems.filter(i => i.cat===cat.id && i.visible!==false);
+      const validItems = items.filter(i => calcSell(i) > 0);
+      if (!validItems.length) return;
+
+      const block = document.createElement('div');
+      block.className = 'cat-block';
+      const hdr = document.createElement('div');
+      hdr.className = 'cat-hdr';
+      hdr.style.background = cat.color;
+      hdr.textContent = cat.name;
+      block.appendChild(hdr);
+
+      validItems.forEach(item => {
+        const sp = calcSell(item);
+        if (!prices[item.id]) prices[item.id] = sp;
+        const row = document.createElement('div');
+        row.className = 'item-row' + (checked[item.id] ? ' checked' : '') + (sp===0?' zero':'');
+        row.dataset.id = item.id;
+        row.innerHTML = `
+          <input type="checkbox" class="item-cb" ${checked[item.id]?'checked':''} onchange="toggleCheck('${item.id}',this.checked)">
+          <span class="item-name">${item.name}</span>
+          <input type="number" class="price-input" value="${prices[item.id]||sp}" min="0"
+            ${!checked[item.id]?'disabled':''}
+            onchange="prices['${item.id}']=Number(this.value)||0;updateTotal()">`;
+        block.appendChild(row);
+      });
+      col.appendChild(block);
+    });
+
+    container.appendChild(col);
+  });
+
+  updateTotal();
+  syncGlobalCheckbox();
+}
+
+function toggleCheck(id, isChecked) {
+  checked[id] = isChecked;
+  const row = document.querySelector(`.item-row[data-id="${id}"]`);
+  if (row) {
+    row.classList.toggle('checked', isChecked);
+    const inp = row.querySelector('.price-input');
+    if (inp) inp.disabled = !isChecked;
+  }
+  updateTotal();
+  syncGlobalCheckbox();
+}
+
+function selectCol(colIdx, isChecked) {
+  const catList = COLS[colIdx];
+  catList.forEach(cat => {
+    allItems.filter(i => i.cat===cat.id && i.visible!==false && calcSell(i)>0).forEach(item => {
+      checked[item.id] = isChecked;
+    });
+  });
+  render();
+}
+
+// 全部全選
+document.getElementById('select-all-global').onchange = function() {
+  allItems.forEach(item => {
+    if (item.visible===false) return;
+    if (calcSell(item) === 0) return;
+    checked[item.id] = this.checked;
+  });
+  render();
+};
+
+function syncGlobalCheckbox() {
+  const allValid = allItems.filter(i => i.visible!==false && calcSell(i)>0);
+  const allChecked = allValid.length > 0 && allValid.every(i => checked[i.id]);
+  document.getElementById('select-all-global').checked = allChecked;
+  // sync col checkboxes
+  COLS.forEach((catList, colIdx) => {
+    const colItems = catList.flatMap(cat => allItems.filter(i=>i.cat===cat.id&&i.visible!==false&&calcSell(i)>0));
+    const colChecked = colItems.length > 0 && colItems.every(i=>checked[i.id]);
+    const cb = document.getElementById(`sel-all-${colIdx}`);
+    if (cb) cb.checked = colChecked;
+  });
+}
+
+function updateTotal() {
+  let total = 0, count = 0;
+  Object.entries(checked).forEach(([id, isChecked]) => {
+    if (!isChecked) return;
+    count++;
+    total += Number(prices[id]) || 0;
+  });
+  document.getElementById('total-display').textContent = 'NT$' + total.toLocaleString('zh-TW');
+  document.getElementById('count-display').textContent = `（已選 ${count} 項）`;
+  document.getElementById('count-badge').textContent = `已選 ${count} 項`;
+}
+
+function clearAll() {
+  if (!confirm('清除所有勾選？')) return;
+  checked = {};
+  render();
+}
+
+// ── 報價單 ─────────────────────────────────────────────────────────────────
+function buildQuote() {
+  const date = document.getElementById('q-date').value;
+  const customer = document.getElementById('q-customer').value.trim();
+  const note = document.getElementById('q-note').value.trim();
+  const dateDisp = date
+    ? new Date(date+'T00:00:00').toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'})
+    : new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'});
+
+  document.getElementById('qp-name').textContent = meta.name || '採鮮農產行';
+  document.getElementById('qp-info').innerHTML =
+    `聯絡人：${meta.contact||''}<br>手機：${meta.phone||''}<br>LINE：${meta.line||''}`;
+  document.getElementById('qp-date').textContent = `報價日期：${dateDisp}`;
+
+  const custEl = document.getElementById('qp-customer');
+  custEl.style.display = 'none'; // 移到下方顯示
+
+  document.getElementById('qp-note-row').innerHTML = note ? `※ ${note}` : '';
+  const custBottom = document.getElementById('qp-customer-bottom');
+  if (custBottom) { custBottom.textContent = customer ? `客戶：${customer}` : ''; custBottom.style.fontSize = '15px'; }
+
+  let total = 0;
+  const grid = document.getElementById('qp-grid');
+  grid.innerHTML = '';
+
+  COLS.forEach((catList, colIdx) => {
+    const col = document.createElement('div');
+    col.style.cssText = `border-right:${colIdx<COLS.length-1?'1.5px solid #dde8dd':'none'};display:flex;flex-direction:column`;
+
+    catList.forEach((cat, ci) => {
+      const items = allItems.filter(i => i.cat===cat.id && checked[i.id]);
+      if (!items.length) return;
+
+      // divider between cats in same col
+      if (ci > 0) {
+        const div = document.createElement('div');
+        div.style.borderTop = '2px solid #dde8dd';
+        col.appendChild(div);
+      }
+
+      const hdr = document.createElement('div');
+      hdr.style.cssText = `padding:10px 14px;font-size:16px;font-weight:900;color:#fff;background:${cat.color}`;
+      hdr.textContent = cat.name;
+      col.appendChild(hdr);
+
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'display:flex;justify-content:space-between;padding:4px 10px;font-size:10px;font-weight:700;color:#aaa;border-bottom:1px solid #eee;text-transform:uppercase;letter-spacing:.04em';
+      lbl.innerHTML = '<span>品項</span><span>單價</span>';
+      col.appendChild(lbl);
+
+      items.forEach(item => {
+        const p = Number(prices[item.id])||0;
+        total += p;
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #f0f5f0;font-size:14px';
+        row.innerHTML = `<span style="flex:1;padding-right:8px;font-size:16px">${item.name}</span><span style="font-size:16px">${p.toLocaleString('zh-TW')}</span>`;
+        col.appendChild(row);
+      });
+    });
+
+    if (col.children.length > 0) grid.appendChild(col);
+  });
+
+  // 如果有空欄補一個佔位
+  while (grid.children.length < 3) {
+    const empty = document.createElement('div');
+    empty.style.cssText = `border-right:${grid.children.length<2?'1.5px solid #dde8dd':'none'}`;
+    grid.appendChild(empty);
+  }
+
+
+}
+
+function getCheckedCount() {
+  return Object.values(checked).filter(Boolean).length;
+}
+
+function showPreview() {
+  if (!getCheckedCount()) { alert('請先勾選品項'); return; }
+  buildQuote();
+  const modal = document.getElementById('preview-modal');
+  modal.style.display = 'flex';
+  modal.onclick = e => { if (e.target===modal) closePreview(); };
+}
+function closePreview() {
+  document.getElementById('preview-modal').style.display = 'none';
+}
+
+async function downloadQuote() {
+  if (!getCheckedCount()) { alert('請先勾選品項'); return; }
+  buildQuote();
+  const qp = document.getElementById('qp-content');
+  const modal = document.getElementById('preview-modal');
+  modal.style.cssText = 'display:flex;position:fixed;left:-9999px;top:0';
+  await new Promise(r=>setTimeout(r,120));
+  try {
+    const canvas = await html2canvas(qp, {scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const date = document.getElementById('q-date').value || new Date().toISOString().slice(0,10);
+    const cust = document.getElementById('q-customer').value.trim();
+    const fname = cust ? `採鮮報價單_${cust}_${date}.png` : `採鮮報價單_${date}.png`;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = fname;
+    a.click();
+  } catch(e) { alert('失敗：'+e.message); }
+  finally { modal.style.display='none'; }
+}
+
+// ── 初始化 ────────────────────────────────────────────────────────────────
+document.getElementById('q-date').value = new Date().toISOString().slice(0,10);
+
+async function load() {
+  try {
+    const app = firebase.apps[0] || firebase.initializeApp({
+      apiKey:FB_API_KEY, projectId:FB_PROJECT_ID,
+      authDomain:`${FB_PROJECT_ID}.firebaseapp.com`
+    });
+    const snap = await app.firestore().collection('price_board').doc('current').get();
+    if (snap.exists) { const d=snap.data(); allItems=d.items||[]; meta=d.meta||{}; }
+  } catch(e) { console.warn('Firebase 載入失敗', e.message); }
+  render();
+}
+load();
+</script>
+</body>
+</html>
