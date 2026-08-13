@@ -82,9 +82,14 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#fff;color:#
 }
 
 .loading{text-align:center;padding:60px;color:#888;font-size:15px}
+#dl-btn{position:fixed;top:14px;right:14px;z-index:999;background:#2d6a2d;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);font-family:inherit;transition:.15s}
+#dl-btn:hover{background:#235a23}
+@media print{#dl-btn{display:none}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
+<button id="dl-btn" onclick="downloadImg()">📷 下載圖片</button>
 <div class="page" id="app"><div class="loading">載入中…</div></div>
 
 <script>
@@ -208,6 +213,20 @@ async function load() {
   } catch(e) {
     document.getElementById('app').innerHTML = `<div class="loading">錯誤：${e.message}</div>`;
   }
+}
+async function downloadImg() {
+  const btn = document.getElementById('dl-btn');
+  btn.textContent = '⏳ 產生中…'; btn.disabled = true;
+  try {
+    const canvas = await html2canvas(document.getElementById('app'), {scale:2,backgroundColor:'#ffffff',scrollY:-window.scrollY});
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `採鮮農產行報價單_${dateStr}.png`;
+    a.click();
+  } catch(e) { alert('失敗：'+e.message); }
+  finally { btn.textContent = '📷 下載圖片'; btn.disabled = false; }
 }
 load();
 </script>
