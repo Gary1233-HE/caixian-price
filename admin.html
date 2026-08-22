@@ -1067,10 +1067,12 @@ async function publishToFirebase() {
     saveLocal();
 
     await _fbDb.collection('price_board').doc('current').set({
-      meta:       state.meta,
-      items:      state.items,
-      lastPrices: state.lastPrices || {},
-      updatedAt:  new Date().toISOString()
+      meta:         state.meta,
+      items:        state.items,
+      lastPrices:   state.lastPrices   || {},
+      priceHistory: state.priceHistory || [],
+      history:      state.history      || [],
+      updatedAt:    new Date().toISOString()
     });
 
     status.textContent = '✓ 發布成功！客人頁面已更新'; status.style.color = 'var(--green)';
