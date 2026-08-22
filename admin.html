@@ -167,6 +167,43 @@ input:focus,select:focus{outline:none;border-color:var(--gm)}
 
 
 
+<!-- 密碼保護 -->
+<div id="lock-screen" style="position:fixed;inset:0;background:#2d6a2d;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="background:#fff;border-radius:12px;padding:36px 32px;width:300px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <div style="font-size:24px;font-weight:900;color:#2d6a2d;margin-bottom:6px">🌿 採鮮農產行</div>
+    <div style="font-size:13px;color:#888;margin-bottom:24px">管理後台</div>
+    <input type="password" id="pw-input" placeholder="請輸入密碼"
+      style="width:100%;border:2px solid #dde8dd;border-radius:6px;padding:10px 12px;font-size:16px;text-align:center;outline:none;margin-bottom:12px;font-family:inherit"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <button onclick="checkPw()"
+      style="width:100%;background:#2d6a2d;color:#fff;border:none;border-radius:6px;padding:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+      進入
+    </button>
+    <div id="pw-err" style="color:#c0392b;font-size:12px;margin-top:10px;min-height:18px"></div>
+  </div>
+</div>
+<script>
+function checkPw() {
+  const val = document.getElementById('pw-input').value;
+  if (val === '433127') {
+    document.getElementById('lock-screen').style.display = 'none';
+    sessionStorage.setItem('cxnc_auth', '1');
+  } else {
+    document.getElementById('pw-err').textContent = '密碼錯誤，請重試';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+if (sessionStorage.getItem('cxnc_auth') === '1') {
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('lock-screen').style.display = 'none';
+  });
+}
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pw-input').focus();
+});
+</script>
+
 <div class="topbar">
   <div class="logo">🌿 採鮮農產行</div>
   <div class="tabs" id="tabs">
@@ -178,6 +215,7 @@ input:focus,select:focus{outline:none;border-color:var(--gm)}
     <span id="sync-dot" style="font-size:11px;color:rgba(255,255,255,.6)"></span>
     <a href="https://gary1233-he.github.io/caixian-price/public.html" target="_blank" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:4px 9px;border-radius:5px;font-size:12px;font-weight:700;text-decoration:none">🌐 報價表</a>
     <a href="https://gary1233-he.github.io/caixian-price/quote.html" target="_blank" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:4px 9px;border-radius:5px;font-size:12px;font-weight:700;text-decoration:none">🔖 現場報價</a>
+    <button class="btn-gh btn-sm" onclick="loadFromFirebase()">☁ 雲端載入</button>
     <button class="btn-gh btn-sm" onclick="importBackup()">↑ 匯入備份</button>
     <button class="btn-gh btn-sm" onclick="exportBackup()">↓ 匯出備份</button>
     <button class="btn-w btn-sm" onclick="saveAll()">💾 儲存</button>
@@ -986,6 +1024,31 @@ function saveAll() {
   document.getElementById('sync-dot').textContent = '✓ 已儲存';
   setTimeout(() => document.getElementById('sync-dot').textContent = '', 2000);
   toast('✓ 已儲存');
+}
+
+// ── 雲端載入 ─────────────────────────────────────────────────────────────────
+async function loadFromFirebase() {
+  const pid = localStorage.getItem('pub_pid');
+  const key = localStorage.getItem('pub_key');
+  if (!pid || !key) { toast('請先按「☁ 發布」設定 Firebase 連線'); return; }
+  try {
+    if (!_fbDb) {
+      const existing = window.firebase?.apps?.find(a => a.name === '[DEFAULT]');
+      const app = existing || firebase.initializeApp({ apiKey:key, projectId:pid, authDomain:`${pid}.firebaseapp.com` });
+      _fbDb = app.firestore();
+    }
+    toast('載入中…');
+    const snap = await _fbDb.collection('price_board').doc('current').get();
+    if (!snap.exists) { toast('雲端尚無資料'); return; }
+    const d = snap.data();
+    if (d.items)        state.items        = d.items;
+    if (d.meta)         state.meta         = d.meta;
+    if (d.history)      state.history      = d.history;
+    if (d.priceHistory) state.priceHistory = d.priceHistory;
+    if (d.lastPrices)   state.lastPrices   = d.lastPrices;
+    _setStore('cxnc_state', JSON.stringify(state));
+    setTimeout(() => { fillMeta(); renderPriceView(); toast('✓ 已從雲端載入'); }, 200);
+  } catch(e) { toast('載入失敗：' + e.message); }
 }
 
 // ── Firebase 發布 ────────────────────────────────────────────────────────────
