@@ -360,20 +360,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
 <!-- 發布 Modal -->
 <div id="publish-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:10px;padding:24px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-    <div style="font-weight:800;font-size:15px;margin-bottom:16px">☁ 發布到 Firebase</div>
-    <div style="margin-bottom:10px">
-      <label style="font-size:12px;color:var(--muted);font-weight:700">Project ID</label>
-      <input id="pub-pid" type="text" style="width:100%;margin-top:4px;padding:7px 10px;font-size:13px;font-family:monospace" placeholder="caixian-price-619c4">
-    </div>
-    <div style="margin-bottom:16px">
-      <label style="font-size:12px;color:var(--muted);font-weight:700">API Key</label>
-      <input id="pub-key" type="text" style="width:100%;margin-top:4px;padding:7px 10px;font-size:13px;font-family:monospace" placeholder="AIza...">
-    </div>
-    <div id="pub-status" style="font-size:12px;color:var(--muted);margin-bottom:12px;min-height:18px"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
+  <div style="background:#fff;border-radius:10px;padding:24px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2);text-align:center">
+    <div style="font-weight:800;font-size:15px;margin-bottom:12px">☁ 發布到 Firebase</div>
+    <div id="pub-status" style="font-size:13px;color:var(--muted);margin-bottom:16px;min-height:20px">確定要發布到客人報價頁面嗎？</div>
+    <div style="display:flex;gap:8px;justify-content:center">
       <button class="btn-o" onclick="closePublishModal()">取消</button>
-      <button class="btn-g" onclick="publishToFirebase()">發布</button>
+      <button class="btn-g" onclick="publishToFirebase()">確定發布</button>
     </div>
   </div>
 </div>
@@ -488,13 +480,7 @@ function _initUI() {
   if (!state.lastPrices)   state.lastPrices   = {};
   fillMeta();
   renderPriceView();
-  // 還原上次發布設定
-  try {
-    const pid = localStorage.getItem('pub_pid');
-    const key = localStorage.getItem('pub_key');
-    if (pid) document.getElementById('pub-pid').value = pid;
-    if (key) document.getElementById('pub-key').value = key;
-  } catch(e) {}
+
 }  // end _initUI
 
 // ── IndexedDB 儲存（file:// 也能永久保存）────────────────────────────────
@@ -1028,13 +1014,10 @@ function saveAll() {
 
 // ── 雲端載入 ─────────────────────────────────────────────────────────────────
 async function loadFromFirebase() {
-  const pid = localStorage.getItem('pub_pid');
-  const key = localStorage.getItem('pub_key');
-  if (!pid || !key) { toast('請先按「☁ 發布」設定 Firebase 連線'); return; }
   try {
     if (!_fbDb) {
       const existing = window.firebase?.apps?.find(a => a.name === '[DEFAULT]');
-      const app = existing || firebase.initializeApp({ apiKey:key, projectId:pid, authDomain:`${pid}.firebaseapp.com` });
+      const app = existing || firebase.initializeApp({ apiKey:_FB_KEY, projectId:_FB_PID, authDomain:`${_FB_PID}.firebaseapp.com` });
       _fbDb = app.firestore();
     }
     toast('載入中…');
@@ -1055,14 +1038,8 @@ async function loadFromFirebase() {
 let _fbDb = null;
 
 function showPublishModal() {
-  // 還原上次填的設定
-  const pid = localStorage.getItem('pub_pid') || '';
-  const key = localStorage.getItem('pub_key') || '';
-  try {
-    document.getElementById('pub-pid').value = pid;
-    document.getElementById('pub-key').value = key;
-  } catch(e) {}
-  document.getElementById('pub-modal-status') && (document.getElementById('pub-modal-status').textContent = '');
+  document.getElementById('pub-status').textContent = '確定要發布到客人報價頁面嗎？';
+  document.getElementById('pub-status').style.color = 'var(--muted)';
   document.getElementById('publish-modal').style.display = 'flex';
 }
 
@@ -1070,20 +1047,16 @@ function closePublishModal() {
   document.getElementById('publish-modal').style.display = 'none';
 }
 
+const _FB_PID = 'caixian-price-619c4';
+const _FB_KEY = 'AIzaSyDyIgF1T3qwVUdxTtfuo9SRwpiEQpfMaIA';
+
 async function publishToFirebase() {
-  const pid = document.getElementById('pub-pid').value.trim();
-  const key = document.getElementById('pub-key').value.trim();
   const status = document.getElementById('pub-status');
-  if (!pid || !key) { status.textContent = '請填入 Project ID 和 API Key'; status.style.color='var(--red)'; return; }
-
-  status.textContent = '連線中…'; status.style.color = 'var(--muted)';
+  status.textContent = '發布中…'; status.style.color = 'var(--muted)';
   try {
-    localStorage.setItem('pub_pid', pid);
-    localStorage.setItem('pub_key', key);
-
     if (!_fbDb) {
       const existing = window.firebase?.apps?.find(a => a.name === '[DEFAULT]');
-      const app = existing || firebase.initializeApp({ apiKey:key, projectId:pid, authDomain:`${pid}.firebaseapp.com` });
+      const app = existing || firebase.initializeApp({ apiKey:_FB_KEY, projectId:_FB_PID, authDomain:`${_FB_PID}.firebaseapp.com` });
       _fbDb = app.firestore();
     }
 
