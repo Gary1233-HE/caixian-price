@@ -471,7 +471,8 @@ function _initUI() {
   // Ensure all default items exist
   DEFAULT_ITEMS.forEach(def => {
     if (!state.items.find(i => i.id === def.id)) {
-      state.items.push({...def, cost:0, type:'pct', markup:30, price:0, trend:'', visible:true});
+      const defaultType = def.cat === 'c1' ? 'progressive' : 'pct';
+      state.items.push({...def, cost:0, type:defaultType, markup:30, price:0, trend:'', visible:true});
     }
   });
   if (!state.meta.name) state.meta = {name:'採鮮農產行',contact:'何翰林',phone:'0931-981233',line:'@nvy5669n',note:'價格以當日市場行情為準，如有異動恕不另行通知'};
@@ -586,12 +587,24 @@ function effectiveCost(item) {
   return Number(item.cost) || 0;
 }
 
+// 累進加算：330以下固定+100，以上加30%取整到30/50/80/100結尾
+function progressiveAddon(cost) {
+  if (cost <= 330) return 100;
+  const raw = cost * 0.3;
+  const base = Math.floor(raw / 100) * 100;
+  const ones = raw - base;
+  const targets = [0, 30, 50, 80, 100];
+  const closest = targets.reduce((a, b) => Math.abs(ones - a) <= Math.abs(ones - b) ? a : b);
+  return base + (closest === 100 ? 100 : closest);
+}
+
 function sellPrice(item) {
   if (item.cat === 'c4' && item.srcId) return cutSellPrice(item);
   const cost = effectiveCost(item);
   if (!cost) return Number(item.price) || 0;
-  if (item.type === 'manual') return Number(item.price) || 0;
-  if (item.type === 'fixed')  return cost + (Number(item.markup) || 0);
+  if (item.type === 'manual')      return Number(item.price) || 0;
+  if (item.type === 'fixed')       return cost + (Number(item.markup) || 0);
+  if (item.type === 'progressive') return cost + progressiveAddon(cost);
   return Math.round(cost * (1 + (Number(item.markup) || 0) / 100));
 }
 
@@ -733,7 +746,9 @@ function renderPriceView() {
       // markup input
       const markupInput = item.type === 'manual'
         ? `<input type="number" style="width:52px" value="${item.price||''}" placeholder="售價"
-            onchange="setField('${item.id}','price',this.value);refreshRow('${item.id}')">`
+            onchange="setField('${item.id}','price',this.value);refreshRow('${item.id}')">` 
+        : item.type === 'progressive'
+        ? `<span style="font-size:11px;color:var(--green);font-weight:700">+${progressiveAddon(effectiveCost(item))}</span>`
         : `<input type="number" style="width:48px" value="${item.markup||''}" placeholder="0"
             onchange="setField('${item.id}','markup',this.value);refreshRow('${item.id}')">
            <span style="font-size:10px;color:var(--muted)">${item.type==='pct'?'%':'元'}</span>`;
@@ -741,9 +756,10 @@ function renderPriceView() {
       // type select
       const typeSelect = `<select style="width:62px"
           onchange="setField('${item.id}','type',this.value);renderPriceView()">
-          <option value="pct"   ${item.type==='pct'   ?'selected':''}>加成%</option>
-          <option value="fixed" ${item.type==='fixed' ?'selected':''}>加元</option>
-          <option value="manual"${item.type==='manual'?'selected':''}>手動</option>
+          <option value="pct"        ${item.type==='pct'        ?'selected':''}>加成%</option>
+          <option value="fixed"       ${item.type==='fixed'       ?'selected':''}>加元</option>
+          <option value="progressive" ${item.type==='progressive' ?'selected':''}>累進</option>
+          <option value="manual"      ${item.type==='manual'      ?'selected':''}>手動</option>
         </select>`;
 
       // 漲跌由 autoTrend() 自動比對上次發布價格，不需手動
