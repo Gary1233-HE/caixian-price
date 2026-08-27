@@ -78,12 +78,23 @@ function today() {
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ── 計算售價 ────────────────────────────────────────────────────────────────
+function progressiveAddon(cost) {
+  if (cost <= 330) return 100;
+  const raw = cost * 0.3;
+  const base = Math.floor(raw / 100) * 100;
+  const ones = raw - base;
+  const targets = [0, 30, 50, 80, 100];
+  const closest = targets.reduce((a, b) => Math.abs(ones - a) <= Math.abs(ones - b) ? a : b);
+  return base + (closest === 100 ? 100 : closest);
+}
+
 function calcSell(item, all) {
   if (item.cat === 'c4' && item.srcId) return cutPrice(item, all);
   const cost = Number(item.cost)||0;
   if (!cost) return Number(item.price)||0;
-  if (item.type==='manual') return Number(item.price)||0;
-  if (item.type==='fixed')  return cost + (Number(item.markup)||0);
+  if (item.type==='manual')      return Number(item.price)||0;
+  if (item.type==='fixed')       return cost + (Number(item.markup)||0);
+  if (item.type==='progressive') return cost + progressiveAddon(cost);
   return Math.round(cost * (1 + (Number(item.markup)||0) / 100));
 }
 
@@ -191,12 +202,19 @@ async function downloadImg() {
   btn.textContent = '⏳ 產生中…'; btn.disabled = true;
   try {
     const canvas = await html2canvas(document.getElementById('app'), {scale:2,backgroundColor:'#ffffff',scrollY:-window.scrollY});
-    const d = new Date();
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = `採鮮農產行報價單_${dateStr}.png`;
-    a.click();
+    const dataUrl = canvas.toDataURL('image/png');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      const w = window.open();
+      w.document.write(`<img src="${dataUrl}" style="max-width:100%;display:block"/><p style="text-align:center;font-family:sans-serif;color:#888;padding:10px">長按圖片儲存到相簿</p>`);
+    } else {
+      const d = new Date();
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `採鮮農產行報價單_${dateStr}.png`;
+      a.click();
+    }
   } catch(e) { alert('失敗：'+e.message); }
   finally { btn.textContent = '📷 下載圖片'; btn.disabled = false; }
 }
