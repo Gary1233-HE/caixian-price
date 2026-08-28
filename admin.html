@@ -766,7 +766,7 @@ function renderPriceView() {
         : item.type === 'progressive'
         ? `<span style="font-size:11px;color:var(--green);font-weight:700">+${progressiveAddon(effectiveCost(item))}</span>`
         : item.type === 'retail-progressive'
-        ? `<span style="font-size:11px;color:var(--green);font-weight:700">散售</span>`
+        ? `<span style="font-size:11px;color:var(--green);font-weight:700">+${retailProgressiveAddon(effectiveCost(item)) - effectiveCost(item)}</span>`
         : `<input type="number" style="width:48px" value="${item.markup||''}" placeholder="0"
             onchange="setField('${item.id}','markup',this.value);refreshRow('${item.id}')">
            <span style="font-size:10px;color:var(--muted)">${item.type==='pct'?'%':'元'}</span>`;
