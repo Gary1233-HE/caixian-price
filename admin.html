@@ -588,6 +588,21 @@ function effectiveCost(item) {
 }
 
 // 累進加算：330以下固定+100，以上加30%取整到30/50/80/100結尾
+
+// 散售累進計算
+function retailProgressiveAddon(base) {
+  if (base <= 25) return base + 10;
+  let rate;
+  if (base <= 99)  rate = 1.45;
+  else if (base <= 199) rate = 1.40;
+  else rate = 1.35;
+  const raw = base * rate;
+  const b = Math.floor(raw / 10) * 10;
+  const ones = raw - b;
+  const targets = [0, 3, 5, 8, 10];
+  const closest = targets.reduce((a, t) => Math.abs(ones - a) <= Math.abs(ones - t) ? a : t);
+  return b + (closest === 10 ? 10 : closest);
+}
 function progressiveAddon(cost) {
   if (cost <= 330) return 100;
   const raw = cost * 0.3;
@@ -604,7 +619,8 @@ function sellPrice(item) {
   if (!cost) return Number(item.price) || 0;
   if (item.type === 'manual')      return Number(item.price) || 0;
   if (item.type === 'fixed')       return cost + (Number(item.markup) || 0);
-  if (item.type === 'progressive') return cost + progressiveAddon(cost);
+  if (item.type === 'progressive')        return cost + progressiveAddon(cost);
+  if (item.type === 'retail-progressive') return retailProgressiveAddon(cost);
   return Math.round(cost * (1 + (Number(item.markup) || 0) / 100));
 }
 
@@ -749,6 +765,8 @@ function renderPriceView() {
             onchange="setField('${item.id}','price',this.value);refreshRow('${item.id}')">` 
         : item.type === 'progressive'
         ? `<span style="font-size:11px;color:var(--green);font-weight:700">+${progressiveAddon(effectiveCost(item))}</span>`
+        : item.type === 'retail-progressive'
+        ? `<span style="font-size:11px;color:var(--green);font-weight:700">散售</span>`
         : `<input type="number" style="width:48px" value="${item.markup||''}" placeholder="0"
             onchange="setField('${item.id}','markup',this.value);refreshRow('${item.id}')">
            <span style="font-size:10px;color:var(--muted)">${item.type==='pct'?'%':'元'}</span>`;
@@ -756,10 +774,10 @@ function renderPriceView() {
       // type select
       const typeSelect = `<select style="width:62px"
           onchange="setField('${item.id}','type',this.value);renderPriceView()">
-          <option value="pct"        ${item.type==='pct'        ?'selected':''}>加成%</option>
-          <option value="fixed"       ${item.type==='fixed'       ?'selected':''}>加元</option>
-          <option value="progressive" ${item.type==='progressive' ?'selected':''}>累進</option>
-          <option value="manual"      ${item.type==='manual'      ?'selected':''}>手動</option>
+          <option value="fixed"             ${item.type==='fixed'             ?'selected':''}>加元</option>
+          <option value="progressive"       ${item.type==='progressive'       ?'selected':''}>累進</option>
+          <option value="retail-progressive"${item.type==='retail-progressive'?'selected':''}>散售累進</option>
+          <option value="manual"            ${item.type==='manual'            ?'selected':''}>手動</option>
         </select>`;
 
       // 漲跌由 autoTrend() 自動比對上次發布價格，不需手動

@@ -180,6 +180,21 @@ let checked = {};
 let prices  = {};
 
 // ── 計算售價 ─────────────────────────────────────────────────────────────────
+
+// 散售累進計算
+function retailProgressiveAddon(base) {
+  if (base <= 25) return base + 10;
+  let rate;
+  if (base <= 99)  rate = 1.45;
+  else if (base <= 199) rate = 1.40;
+  else rate = 1.35;
+  const raw = base * rate;
+  const b = Math.floor(raw / 10) * 10;
+  const ones = raw - b;
+  const targets = [0, 3, 5, 8, 10];
+  const closest = targets.reduce((a, t) => Math.abs(ones - a) <= Math.abs(ones - t) ? a : t);
+  return b + (closest === 10 ? 10 : closest);
+}
 function progressiveAddon(cost) {
   if (cost <= 330) return 100;
   const raw = cost * 0.3;
@@ -204,7 +219,8 @@ function calcSell(item) {
   if (!cost) return Number(item.price)||0;
   if (item.type==='manual')      return Number(item.price)||0;
   if (item.type==='fixed')       return cost + (Number(item.markup)||0);
-  if (item.type==='progressive') return cost + progressiveAddon(cost);
+  if (item.type==='progressive')        return cost + progressiveAddon(cost);
+  if (item.type==='retail-progressive') return retailProgressiveAddon(cost);
   return Math.round(cost * (1 + (Number(item.markup)||0)/100));
 }
 
