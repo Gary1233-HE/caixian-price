@@ -8,84 +8,47 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#f4f6f4;color:#111;font-size:13px}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#d0d8e0;color:#1a1a2e;-webkit-font-smoothing:antialiased;min-height:100vh;padding:20px}
 
-/* ── Toolbar ── */
-.toolbar{background:#1a6a6a;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.toolbar-title{font-size:15px;font-weight:900}
-.toolbar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-weight:700;font-size:12px;padding:6px 12px;transition:.15s}
-.btn-w{background:#fff;color:#1a6a6a}.btn-w:hover{background:#e0f0f0}
-.btn-g{background:#2d6a2d;color:#fff}.btn-g:hover{background:#235a23}
-.btn-gh{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}.btn-gh:hover{background:rgba(255,255,255,.28)}
-.btn-sm{padding:4px 9px;font-size:11px}
+.page{width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:24px 28px 32px;box-shadow:0 4px 24px rgba(0,0,0,.18)}
 
-/* ── Settings bar ── */
-.settings-bar{background:#fff;border-bottom:1px solid #dde8dd;padding:8px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.settings-bar label{font-size:11px;color:#888;font-weight:700;margin-right:3px}
-.settings-bar input{border:1px solid #dde8dd;border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit}
-#total-bar{background:#1a6a6a;color:#fff;padding:6px 16px;display:flex;align-items:center;justify-content:space-between}
-.total-label{font-size:12px;opacity:.8}
-.total-val{font-size:18px;font-weight:900}
-.checked-count{font-size:11px;opacity:.7;margin-left:8px}
+/* Header */
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:3px solid #1a5276}
+.shop-name{font-size:34px;font-weight:900;color:#1a5276;line-height:1}
+.shop-info{font-size:13px;color:#555;margin-top:6px;line-height:1.9}
+.date-block{text-align:right}
+.date-label{font-size:17px;font-weight:900;color:#1a5276;letter-spacing:.05em}
+.date-value{font-size:13px;color:#555;margin-top:4px}
+.date-note{font-size:10px;color:#c0392b;margin-top:2px}
+.updated{font-size:9px;color:#aaa;margin-top:2px}
 
-/* ── 三欄 Grid ── */
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0;background:#dde8dd;border-top:1px solid #dde8dd}
-@media(max-width:700px){.grid{grid-template-columns:1fr}}
+/* 四欄 Grid */
+.price-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #2980b9;border-radius:4px;overflow:hidden}
+.price-col{border-right:1.5px solid #2980b9;display:flex;flex-direction:column}
+.price-col:last-child{border-right:none}
 
-.col{background:#f4f6f4;border-right:1px solid #dde8dd;display:flex;flex-direction:column}
-.col:last-child{border-right:none}
+.cat-hdr{padding:7px 10px;font-size:14px;font-weight:900;color:#fff;letter-spacing:.04em}
+.col-lbl{display:flex;justify-content:space-between;padding:5px 10px;font-size:12px;font-weight:700;color:#666;border-bottom:1px solid #d6eaf8;background:#eaf4fd}
+.item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eaf4fd;font-size:14px}
+.item:last-child{border-bottom:none}
+.item:nth-child(even){background:#f8fbff}
+.item-name{color:#1a1a2e;flex:1;padding-right:3px}
+.item-price{white-space:nowrap;font-size:14px;color:#1a2a4a}
+.item-price.up{color:#c0392b;font-weight:700}
+.item-price.down{color:#1565c0;font-weight:700}
+.arrow{font-size:10px}
+.cat-divider{border-top:1.5px solid #2980b9}
 
-/* ── 欄標題 + 全選 ── */
-.col-top{background:#fff;border-bottom:2px solid #dde8dd;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;position:sticky;top:93px;z-index:50}
-.col-select-all{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#1a6a6a;cursor:pointer;padding:3px 7px;border-radius:4px;border:1px solid #dde8dd;background:#fff}
-.col-select-all:hover{background:#e8f5f5}
-.col-select-all input{width:14px;height:14px;cursor:pointer}
+.footer{margin-top:10px;text-align:center;font-size:10px;color:#888;line-height:2}
+.footer-bold{font-weight:900;color:#1a5276;font-size:12px}
 
-/* ── 類別區塊 ── */
-.cat-block{background:#fff;margin-bottom:1px}
-.cat-hdr{padding:7px 10px;font-weight:900;font-size:12px;color:#fff;letter-spacing:.02em}
-
-/* ── 品項行 ── */
-.item-row{display:grid;grid-template-columns:20px 1fr 72px;gap:6px;align-items:center;padding:4px 10px;border-bottom:1px solid #f0f5f0;background:#fff}
-.item-row:last-child{border-bottom:none}
-.item-row.checked{background:#f0faf0}
-.item-row.zero{opacity:.45}
-.item-cb{width:15px;height:15px;cursor:pointer}
-.item-name{font-size:12px;line-height:1.3}
-.price-input{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:3px 5px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;color:#1a6a6a;background:#fff}
-.price-input:disabled{background:#f8f8f8;color:#aaa}
-.item-row.checked .price-input{border-color:#1a6a6a;background:#fff}
-
-/* ── 預覽 Modal ── */
-#preview-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow:auto;padding:20px;justify-content:center;align-items:flex-start}
-.preview-wrap{background:#fff;border-radius:8px;overflow:hidden;max-width:680px;width:100%;margin:0 auto}
-.preview-toolbar{background:#1a6a6a;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
-#qp-content{padding:28px 24px 36px}
-.qp-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px}
-.qp-shop{font-size:28px;font-weight:900;color:#2d6a2d}
-.qp-info{font-size:13px;color:#444;margin-top:6px;line-height:1.9}
-.qp-date-block{text-align:right}
-.qp-date-label{font-size:17px;font-weight:900}
-.qp-date-val{font-size:13px;color:#444;margin-top:3px}
-.qp-sub-note{font-size:12px;color:#c05a00;margin-top:2px}
-.qp-customer{font-size:14px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #eee}
-.qp-table{width:100%;border-collapse:collapse;border:1.5px solid #dde8dd;border-radius:6px;overflow:hidden}
-.qp-table th{background:#1a6a6a;color:#fff;padding:8px 12px;text-align:left;font-size:13px}
-.qp-table th.r{text-align:right}
-.qp-table td{padding:8px 12px;border-bottom:1px solid #f0f5f0;font-size:15px}
-.qp-table td.r{text-align:right;font-weight:700}
-.qp-table tr:nth-child(even) td{background:#f8fbf8}
-.qp-table tr:last-child td{border-bottom:none}
-.qp-total-row{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:14px}
-.qp-total-label{font-size:14px;font-weight:700;color:#555}
-.qp-total-val{font-size:24px;font-weight:900;color:#1a6a6a}
-.qp-footer{margin-top:16px;text-align:center;font-size:12px;color:#888;line-height:2}
-.qp-footer b{color:#2d6a2d;font-weight:900;font-size:13px}
-
-.loading{text-align:center;padding:30px;color:#aaa;font-size:13px}
+#dl-btn{position:fixed;top:16px;right:16px;z-index:999;background:#1a5276;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);font-family:inherit}
+#dl-btn:hover{background:#154360}
+@media print{#dl-btn{display:none}body{background:#fff;padding:0}.page{box-shadow:none;width:100%}}
+@media(max-width:600px){body{padding:0}.page{width:100%;padding:14px 10px}.price-grid{grid-template-columns:1fr 1fr}.price-col:nth-child(2){border-right:none}.price-col:nth-child(3){border-top:1.5px solid #2980b9}.price-col:nth-child(4){border-top:1.5px solid #2980b9;border-right:none}}
+.loading{text-align:center;padding:60px;color:#888}
 </style>
 </head>
 <body>
@@ -151,7 +114,7 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
       </div>
       <div class="qp-customer" id="qp-customer" style="display:none"></div>
       <!-- 三欄報價表 -->
-      <div id="qp-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;border:1.5px solid #dde8dd;border-radius:6px;overflow:hidden;margin-top:14px"></div>
+      <div id="qp-grid" style="display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #2980b9;border-radius:4px;overflow:hidden;margin-top:14px"></div>
 
       <div style="margin-top:14px">
         <div id="qp-note-row" style="text-align:center;font-size:12px;color:#888;margin-bottom:4px"></div>
@@ -371,9 +334,16 @@ function buildQuote() {
   const grid = document.getElementById('qp-grid');
   grid.innerHTML = '';
 
-  COLS.forEach((catList, colIdx) => {
+  // 4欄：截切、葉菜、瓜果、菇
+  const FOUR_COLS = [
+    [{id:'c4',name:'🔪 蔬菜截切',color:'#1a7a6e'}],
+    [{id:'c1',name:'🥬 葉菜類',  color:'#1e8449'}],
+    [{id:'c2',name:'🍈 瓜果類',  color:'#d4ac0d'}],
+    [{id:'c3',name:'🍄 菇與其他',color:'#7b241c'}],
+  ];
+  FOUR_COLS.forEach((catList, colIdx) => {
     const col = document.createElement('div');
-    col.style.cssText = `border-right:${colIdx<COLS.length-1?'1.5px solid #dde8dd':'none'};display:flex;flex-direction:column`;
+    col.style.cssText = `border-right:${colIdx<FOUR_COLS.length-1?'1.5px solid #2980b9':'none'};display:flex;flex-direction:column`;
 
     catList.forEach((cat, ci) => {
       const items = allItems.filter(i => i.cat===cat.id && checked[i.id]);
@@ -442,7 +412,7 @@ async function downloadQuote() {
   modal.style.cssText = 'display:flex;position:fixed;left:-9999px;top:0';
   await new Promise(r=>setTimeout(r,120));
   try {
-    const canvas = await html2canvas(qp, {scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const canvas = await html2canvas(qp, {scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:794});
     const dataUrl = canvas.toDataURL('image/png');
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     if (isIOS) {
