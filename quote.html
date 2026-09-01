@@ -8,47 +8,87 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#d0d8e0;color:#1a1a2e;-webkit-font-smoothing:antialiased;min-height:100vh;padding:20px}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#f4f6f4;color:#111;font-size:13px}
 
-.page{width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:24px 28px 32px;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+/* ── Toolbar ── */
+.toolbar{background:#1a6a6a;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.toolbar-title{font-size:15px;font-weight:900}
+.toolbar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-weight:700;font-size:12px;padding:6px 12px;transition:.15s}
+.btn-w{background:#fff;color:#1a6a6a}.btn-w:hover{background:#e0f0f0}
+.btn-g{background:#2d6a2d;color:#fff}.btn-g:hover{background:#235a23}
+.btn-gh{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}.btn-gh:hover{background:rgba(255,255,255,.28)}
+.btn-sm{padding:4px 9px;font-size:11px}
 
-/* Header */
-.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:3px solid #1a5276}
-.shop-name{font-size:34px;font-weight:900;color:#1a5276;line-height:1}
-.shop-info{font-size:13px;color:#555;margin-top:6px;line-height:1.9}
-.date-block{text-align:right}
-.date-label{font-size:17px;font-weight:900;color:#1a5276;letter-spacing:.05em}
-.date-value{font-size:13px;color:#555;margin-top:4px}
-.date-note{font-size:10px;color:#c0392b;margin-top:2px}
-.updated{font-size:9px;color:#aaa;margin-top:2px}
+/* ── Settings bar ── */
+.settings-bar{background:#fff;border-bottom:1px solid #dde8dd;padding:8px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.settings-bar label{font-size:11px;color:#888;font-weight:700;margin-right:3px}
+.settings-bar input{border:1px solid #dde8dd;border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit}
+#total-bar{background:#1a6a6a;color:#fff;padding:6px 16px;display:flex;align-items:center;justify-content:space-between}
+.total-label{font-size:12px;opacity:.8}
+.total-val{font-size:18px;font-weight:900}
+.checked-count{font-size:11px;opacity:.7;margin-left:8px}
 
-/* 四欄 Grid */
-.price-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #2980b9;border-radius:4px;overflow:hidden}
-.price-col{border-right:1.5px solid #2980b9;display:flex;flex-direction:column}
-.price-col:last-child{border-right:none}
+/* ── 三欄 Grid ── */
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding:0;background:#dde8dd;border-top:1px solid #dde8dd}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.col{background:#f4f6f4;border-right:1px solid #dde8dd;display:flex;flex-direction:column}
+.col:last-child{border-right:none}
 
-.cat-hdr{padding:7px 10px;font-size:14px;font-weight:900;color:#fff;letter-spacing:.04em}
-.col-lbl{display:flex;justify-content:space-between;padding:5px 10px;font-size:12px;font-weight:700;color:#666;border-bottom:1px solid #d6eaf8;background:#eaf4fd}
-.item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eaf4fd;font-size:14px}
-.item:last-child{border-bottom:none}
-.item:nth-child(even){background:#f8fbff}
-.item-name{color:#1a1a2e;flex:1;padding-right:3px}
-.item-price{white-space:nowrap;font-size:14px;color:#1a2a4a}
-.item-price.up{color:#c0392b;font-weight:700}
-.item-price.down{color:#1565c0;font-weight:700}
-.arrow{font-size:10px}
-.cat-divider{border-top:1.5px solid #2980b9}
+/* ── 欄標題 + 全選 ── */
+.col-top{background:#fff;border-bottom:2px solid #dde8dd;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;position:sticky;top:93px;z-index:50}
+.col-select-all{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#1a6a6a;cursor:pointer;padding:3px 7px;border-radius:4px;border:1px solid #dde8dd;background:#fff}
+.col-select-all:hover{background:#e8f5f5}
+.col-select-all input{width:14px;height:14px;cursor:pointer}
 
-.footer{margin-top:10px;text-align:center;font-size:10px;color:#888;line-height:2}
-.footer-bold{font-weight:900;color:#1a5276;font-size:12px}
+/* ── 類別區塊 ── */
+.cat-block{background:#fff;margin-bottom:1px}
+.cat-hdr{padding:7px 10px;font-weight:900;font-size:12px;color:#fff;letter-spacing:.02em}
 
-#dl-btn{position:fixed;top:16px;right:16px;z-index:999;background:#1a5276;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);font-family:inherit}
-#dl-btn:hover{background:#154360}
-@media print{#dl-btn{display:none}body{background:#fff;padding:0}.page{box-shadow:none;width:100%}}
-@media(max-width:600px){body{padding:0}.page{width:100%;padding:14px 10px}.price-grid{grid-template-columns:1fr 1fr}.price-col:nth-child(2){border-right:none}.price-col:nth-child(3){border-top:1.5px solid #2980b9}.price-col:nth-child(4){border-top:1.5px solid #2980b9;border-right:none}}
-.loading{text-align:center;padding:60px;color:#888}
+/* ── 品項行 ── */
+.item-row{display:grid;grid-template-columns:20px 1fr 72px;gap:6px;align-items:center;padding:4px 10px;border-bottom:1px solid #f0f5f0;background:#fff}
+.item-row:last-child{border-bottom:none}
+.item-row.checked{background:#f0faf0}
+.item-row.zero{opacity:.45}
+.item-cb{width:15px;height:15px;cursor:pointer}
+.item-name{font-size:12px;line-height:1.3}
+.price-input{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:3px 5px;font-size:13px;font-weight:700;text-align:right;font-family:inherit;color:#1a6a6a;background:#fff}
+.price-input:disabled{background:#f8f8f8;color:#aaa}
+.item-row.checked .price-input{border-color:#1a6a6a;background:#fff}
+
+/* ── 預覽 Modal ── */
+#preview-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow:auto;padding:20px;justify-content:center;align-items:flex-start}
+.preview-wrap{background:#fff;border-radius:8px;overflow:hidden;max-width:860px;width:100%;margin:0 auto}
+.preview-toolbar{background:#1a6a6a;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+/* qp-content matches public_v1 A4 style */
+#qp-content{padding:16px 18px 20px;width:794px;min-width:794px;max-width:794px;background:#fff;box-sizing:border-box}
+.qp-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:3px solid #1a5276;flex-wrap:wrap;gap:10px}
+.qp-shop{font-size:34px;font-weight:900;color:#1a5276;line-height:1}
+.qp-info{font-size:13px;color:#555;margin-top:6px;line-height:1.9}
+.qp-date-block{text-align:right}
+.qp-date-label{font-size:17px;font-weight:900;color:#1a5276;letter-spacing:.05em}
+.qp-date-val{font-size:13px;color:#555;margin-top:4px}
+.qp-sub-note{font-size:10px;color:#c0392b;margin-top:2px}
+.qp-customer{font-size:14px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #d6eaf8;color:#1a5276;font-weight:700;text-align:right}
+/* grid inside qp-content */
+.qp-grid-inner{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #2980b9;border-radius:4px;overflow:hidden}
+.qp-col{border-right:1.5px solid #2980b9;display:flex;flex-direction:column}
+.qp-col:last-child{border-right:none}
+.qp-cat-hdr{padding:7px 10px;font-size:14px;font-weight:900;color:#fff}
+.qp-col-lbl{display:flex;justify-content:space-between;padding:4px 10px;font-size:12px;font-weight:700;color:#666;border-bottom:1px solid #d6eaf8;background:#eaf4fd}
+.qp-item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eaf4fd;font-size:14px}
+.qp-item:last-child{border-bottom:none}
+.qp-item:nth-child(even){background:#f8fbff}
+.qp-item-name{color:#1a1a2e;flex:1;padding-right:4px}
+.qp-item-price{white-space:nowrap;font-size:14px;color:#1a2a4a}
+.qp-footer{margin-top:12px;text-align:center;font-size:11px;color:#888;line-height:2}
+.qp-footer b{color:#1a5276;font-weight:900;font-size:13px}
+
+.loading{text-align:center;padding:30px;color:#aaa;font-size:13px}
+
+
 </style>
 </head>
 <body>
@@ -114,7 +154,7 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#d0d8e0;colo
       </div>
       <div class="qp-customer" id="qp-customer" style="display:none"></div>
       <!-- 三欄報價表 -->
-      <div id="qp-grid" style="display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #2980b9;border-radius:4px;overflow:hidden;margin-top:14px"></div>
+      <div id="qp-grid" class="qp-grid-inner" style="margin-top:14px"></div>
 
       <div style="margin-top:14px">
         <div id="qp-note-row" style="text-align:center;font-size:12px;color:#888;margin-bottom:4px"></div>
@@ -311,83 +351,111 @@ function clearAll() {
 
 // ── 報價單 ─────────────────────────────────────────────────────────────────
 function buildQuote() {
-  const date = document.getElementById('q-date').value;
+  const date     = document.getElementById('q-date').value;
   const customer = document.getElementById('q-customer').value.trim();
-  const note = document.getElementById('q-note').value.trim();
+  const note     = document.getElementById('q-note').value.trim();
   const dateDisp = date
     ? new Date(date+'T00:00:00').toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'})
     : new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'});
 
-  document.getElementById('qp-name').textContent = meta.name || '採鮮農產行';
-  document.getElementById('qp-info').innerHTML =
+  // Header
+  document.getElementById('qp-name').textContent  = meta.name || '採鮮農產行';
+  document.getElementById('qp-info').innerHTML    =
     `聯絡人：${meta.contact||''}<br>手機：${meta.phone||''}<br>LINE：${meta.line||''}`;
-  document.getElementById('qp-date').textContent = `報價日期：${dateDisp}`;
-
-  const custEl = document.getElementById('qp-customer');
-  custEl.style.display = 'none'; // 移到下方顯示
-
-  document.getElementById('qp-note-row').innerHTML = note ? `※ ${note}` : '';
+  document.getElementById('qp-date').textContent  = `報價日期：${dateDisp}`;
   const custBottom = document.getElementById('qp-customer-bottom');
-  if (custBottom) { custBottom.textContent = customer ? `客戶：${customer}` : ''; custBottom.style.fontSize = '15px'; }
+  if (custBottom) custBottom.textContent = customer ? `客戶：${customer}` : '';
+  document.getElementById('qp-note-row').innerHTML = note ? `※ ${note}` : '';
 
-  let total = 0;
+  // 四欄 Grid — 跟 public_v1 完全相同
+  const FOUR = [
+    {id:'c4', name:'🔪 蔬菜截切', color:'#1a7a6e'},
+    {id:'c1', name:'🥬 葉菜類',   color:'#1e8449'},
+    {id:'c2', name:'🍈 瓜果類',   color:'#d4ac0d'},
+    {id:'c3', name:'🍄 菇與其他', color:'#7b241c'},
+  ];
+
   const grid = document.getElementById('qp-grid');
   grid.innerHTML = '';
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #2980b9;border-radius:4px;overflow:hidden';
 
-  // 4欄：截切、葉菜、瓜果、菇
-  const FOUR_COLS = [
-    [{id:'c4',name:'🔪 蔬菜截切',color:'#1a7a6e'}],
-    [{id:'c1',name:'🥬 葉菜類',  color:'#1e8449'}],
-    [{id:'c2',name:'🍈 瓜果類',  color:'#d4ac0d'}],
-    [{id:'c3',name:'🍄 菇與其他',color:'#7b241c'}],
-  ];
-  FOUR_COLS.forEach((catList, colIdx) => {
+  FOUR.forEach((cat, ci) => {
+    const items = allItems.filter(i => i.cat===cat.id && checked[i.id]);
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.style.borderRight = ci < FOUR.length-1 ? '1.5px solid #2980b9' : 'none';
+      grid.appendChild(empty);
+      return;
+    }
+
     const col = document.createElement('div');
-    col.style.cssText = `border-right:${colIdx<FOUR_COLS.length-1?'1.5px solid #2980b9':'none'};display:flex;flex-direction:column`;
+    col.style.cssText = `border-right:${ci<FOUR.length-1?'1.5px solid #2980b9':'none'};display:flex;flex-direction:column`;
 
-    catList.forEach((cat, ci) => {
-      const items = allItems.filter(i => i.cat===cat.id && checked[i.id]);
-      if (!items.length) return;
+    // cat header
+    const hdr = document.createElement('div');
+    hdr.style.cssText = `padding:7px 10px;font-size:14px;font-weight:900;color:#fff;letter-spacing:.04em;background:${cat.color}`;
+    hdr.textContent = cat.name;
+    col.appendChild(hdr);
 
-      // divider between cats in same col
-      if (ci > 0) {
-        const div = document.createElement('div');
-        div.style.borderTop = '2px solid #dde8dd';
-        col.appendChild(div);
-      }
+    // col label
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'display:flex;justify-content:space-between;padding:4px 10px;font-size:12px;font-weight:700;color:#666;border-bottom:1px solid #d6eaf8;background:#eaf4fd';
+    lbl.innerHTML = '<span>品項</span><span>單價</span>';
+    col.appendChild(lbl);
 
-      const hdr = document.createElement('div');
-      hdr.style.cssText = `padding:10px 14px;font-size:16px;font-weight:900;color:#fff;background:${cat.color}`;
-      hdr.textContent = cat.name;
-      col.appendChild(hdr);
-
-      const lbl = document.createElement('div');
-      lbl.style.cssText = 'display:flex;justify-content:space-between;padding:4px 10px;font-size:10px;font-weight:700;color:#aaa;border-bottom:1px solid #eee;text-transform:uppercase;letter-spacing:.04em';
-      lbl.innerHTML = '<span>品項</span><span>單價</span>';
-      col.appendChild(lbl);
-
-      items.forEach(item => {
-        const p = Number(prices[item.id])||0;
-        total += p;
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid #f0f5f0;font-size:14px';
-        row.innerHTML = `<span style="flex:1;padding-right:8px;font-size:16px">${item.name}</span><span style="font-size:16px">${p.toLocaleString('zh-TW')}</span>`;
-        col.appendChild(row);
-      });
+    items.forEach((item, idx) => {
+      const p = Number(prices[item.id])||0;
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eaf4fd;font-size:14px;background:${idx%2===1?'#f8fbff':'#fff'}`;
+      row.innerHTML = `<span style="flex:1;padding-right:4px;color:#1a1a2e">${item.name}</span><span style="white-space:nowrap;font-size:14px;color:#1a2a4a">${p}</span>`;
+      col.appendChild(row);
     });
 
-    if (col.children.length > 0) grid.appendChild(col);
+    grid.appendChild(col);
   });
-
-  // 如果有空欄補一個佔位
-  while (grid.children.length < 3) {
-    const empty = document.createElement('div');
-    empty.style.cssText = `border-right:${grid.children.length<2?'1.5px solid #dde8dd':'none'}`;
-    grid.appendChild(empty);
-  }
-
-
 }
+
+async function downloadQuote() {
+  if (!getCheckedCount()) { alert('請先勾選品項'); return; }
+  buildQuote();
+
+  // 建立一個離螢幕的容器，固定 794px 寬截圖
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff';
+  const qp = document.getElementById('qp-content');
+  // clone to wrapper
+  const clone = qp.cloneNode(true);
+  clone.style.cssText = 'width:794px;padding:16px 18px 20px;background:#fff;font-family:Noto Sans TC,PingFang TC,sans-serif';
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+
+  await new Promise(r=>setTimeout(r,200));
+  try {
+    const canvas = await html2canvas(clone, {
+      scale:2, backgroundColor:'#ffffff', useCORS:true,
+      scrollX:0, scrollY:0, windowWidth:794
+    });
+    document.body.removeChild(wrapper);
+    const dataUrl = canvas.toDataURL('image/png');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      const w = window.open();
+      w.document.write(`<img src="${dataUrl}" style="max-width:100%;display:block"/><p style="text-align:center;font-family:sans-serif;color:#888;padding:10px">長按圖片儲存到相簿</p>`);
+    } else {
+      const date = document.getElementById('q-date').value || new Date().toISOString().slice(0,10);
+      const cust = document.getElementById('q-customer').value.trim();
+      const fname = cust ? `採鮮報價單_${cust}_${date}.png` : `採鮮報價單_${date}.png`;
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = fname;
+      a.click();
+    }
+  } catch(e) {
+    document.body.contains(wrapper) && document.body.removeChild(wrapper);
+    alert('失敗：'+e.message);
+  }
+}
+
 
 function getCheckedCount() {
   return Object.values(checked).filter(Boolean).length;
@@ -409,10 +477,10 @@ async function downloadQuote() {
   buildQuote();
   const qp = document.getElementById('qp-content');
   const modal = document.getElementById('preview-modal');
-  modal.style.cssText = 'display:flex;position:fixed;left:-9999px;top:0';
-  await new Promise(r=>setTimeout(r,120));
+  modal.style.cssText = 'display:block;position:fixed;left:-9999px;top:0';
+  await new Promise(r=>setTimeout(r,200));
   try {
-    const canvas = await html2canvas(qp, {scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:794});
+    const canvas = await html2canvas(qp, {scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:794,scrollX:0,scrollY:0});
     const dataUrl = canvas.toDataURL('image/png');
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     if (isIOS) {
