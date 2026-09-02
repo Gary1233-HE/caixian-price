@@ -63,13 +63,13 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
 .preview-wrap{background:#fff;border-radius:8px;overflow:hidden;max-width:860px;width:100%;margin:0 auto}
 .preview-toolbar{background:#1a6a6a;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
 /* qp-content matches public_v1 A4 style */
-#qp-content{padding:16px 18px 20px;width:794px;min-width:794px;max-width:794px;background:#fff;box-sizing:border-box}
-.qp-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:3px solid #1a5276;flex-wrap:wrap;gap:10px}
+#qp-content{padding:4px 5px 5px;width:794px;min-width:794px;max-width:794px;background:#fff;box-sizing:border-box}
+.qp-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .qp-shop{font-size:34px;font-weight:900;color:#1a5276;line-height:1}
-.qp-info{font-size:13px;color:#555;margin-top:6px;line-height:1.9}
+.qp-info{font-size:11px;color:#555;margin-top:6px;line-height:1.9}
 .qp-date-block{text-align:right}
-.qp-date-label{font-size:17px;font-weight:900;color:#1a5276;letter-spacing:.05em}
-.qp-date-val{font-size:13px;color:#555;margin-top:4px}
+.qp-date-label{font-size:14px;font-weight:900;color:#1a5276;letter-spacing:.05em}
+.qp-date-val{font-size:11px;color:#555;margin-top:4px}
 .qp-sub-note{font-size:10px;color:#c0392b;margin-top:2px}
 .qp-customer{font-size:14px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #d6eaf8;color:#1a5276;font-weight:700;text-align:right}
 /* grid inside qp-content */
@@ -77,7 +77,7 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
 .qp-col{border-right:1.5px solid #2980b9;display:flex;flex-direction:column}
 .qp-col:last-child{border-right:none}
 .qp-cat-hdr{padding:7px 10px;font-size:14px;font-weight:900;color:#fff}
-.qp-col-lbl{display:flex;justify-content:space-between;padding:4px 10px;font-size:12px;font-weight:700;color:#666;border-bottom:1px solid #d6eaf8;background:#eaf4fd}
+.qp-col-lbl{display:flex;justify-content:space-between;padding:3px 8px;font-size:10px;font-weight:700;color:#666;border-bottom:1px solid #d6eaf8;background:#eaf4fd}
 .qp-item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eaf4fd;font-size:14px}
 .qp-item:last-child{border-bottom:none}
 .qp-item:nth-child(even){background:#f8fbff}
@@ -137,7 +137,10 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
   <div class="preview-wrap">
     <div class="preview-toolbar">
       <span style="font-weight:800">報價單預覽</span>
-      <button class="btn-w btn-sm" onclick="closePreview()">✕ 關閉</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-w btn-sm" onclick="printPreview()">🖨 列印</button>
+        <button class="btn-w btn-sm" onclick="closePreview()">✕ 關閉</button>
+      </div>
     </div>
     <div id="qp-content">
       <div class="qp-hdr">
@@ -393,7 +396,7 @@ function buildQuote() {
 
     // cat header
     const hdr = document.createElement('div');
-    hdr.style.cssText = `padding:7px 10px;font-size:14px;font-weight:900;color:#fff;letter-spacing:.04em;background:${cat.color}`;
+    hdr.style.cssText = `padding:5px 8px;font-size:12px;font-weight:900;color:#fff;letter-spacing:.04em;background:${cat.color}`;
     hdr.textContent = cat.name;
     col.appendChild(hdr);
 
@@ -406,8 +409,8 @@ function buildQuote() {
     items.forEach((item, idx) => {
       const p = Number(prices[item.id])||0;
       const row = document.createElement('div');
-      row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eaf4fd;font-size:14px;background:${idx%2===1?'#f8fbff':'#fff'}`;
-      row.innerHTML = `<span style="flex:1;padding-right:4px;color:#1a1a2e">${item.name}</span><span style="white-space:nowrap;font-size:14px;color:#1a2a4a">${p}</span>`;
+      row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-bottom:1px solid #eaf4fd;font-size:12px;background:${idx%2===1?'#f8fbff':'#fff'}`;
+      row.innerHTML = `<span style="flex:1;padding-right:4px;color:#1a1a2e">${item.name}</span><span style="white-space:nowrap;font-size:12px;color:#1a2a4a">${p}</span>`;
       col.appendChild(row);
     });
 
@@ -425,7 +428,7 @@ async function downloadQuote() {
   const qp = document.getElementById('qp-content');
   // clone to wrapper
   const clone = qp.cloneNode(true);
-  clone.style.cssText = 'width:794px;padding:16px 18px 20px;background:#fff;font-family:Noto Sans TC,PingFang TC,sans-serif';
+  clone.style.cssText = 'width:794px;padding:4px 5px 5px;background:#fff;font-family:Noto Sans TC,PingFang TC,sans-serif';
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
@@ -468,6 +471,34 @@ function showPreview() {
   modal.style.display = 'flex';
   modal.onclick = e => { if (e.target===modal) closePreview(); };
 }
+function printPreview() {
+  const qp = document.getElementById('qp-content');
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>報價單</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+@page{size:A4 portrait;margin:5mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#fff}
+#print-content{width:100%;padding:4px 5px 5px}
+.qp-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.qp-shop{font-size:34px;font-weight:900;color:#1a5276;line-height:1}
+.qp-info{font-size:11px;color:#555;margin-top:6px;line-height:1.9}
+.qp-date-block{text-align:right}
+.qp-date-label{font-size:14px;font-weight:900;color:#1a5276;letter-spacing:.05em}
+.qp-date-val{font-size:11px;color:#555;margin-top:4px}
+.qp-sub-note{font-size:10px;color:#c0392b;margin-top:2px}
+.qp-customer{font-size:14px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #d6eaf8;color:#1a5276;font-weight:700;text-align:right}
+.qp-footer{margin-top:12px;text-align:center;font-size:11px;color:#888;line-height:2}
+.qp-footer b{color:#1a5276;font-weight:900;font-size:13px}
+</style></head>
+<body><div id="print-content">${qp.innerHTML}</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
+</body></html>`);
+  w.document.close();
+}
+
 function closePreview() {
   document.getElementById('preview-modal').style.display = 'none';
 }
