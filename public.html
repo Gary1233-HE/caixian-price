@@ -43,19 +43,25 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#d0d8e0;colo
 .footer{margin-top:10px;text-align:center;font-size:10px;color:#888;line-height:2}
 .footer-bold{font-weight:900;color:#1a5276;font-size:12px}
 
+#xls-btn{position:fixed;top:16px;right:130px;z-index:999;background:#217346;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);font-family:inherit}
+#xls-btn:hover{background:#1a5c38}
 #dl-btn{position:fixed;top:16px;right:16px;z-index:999;background:#1a5276;color:#fff;border:none;border-radius:6px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);font-family:inherit}
 #dl-btn:hover{background:#154360}
-@media print{#dl-btn{display:none}body{background:#fff;padding:0}.page{box-shadow:none;width:100%}}
+@media print{#dl-btn,#xls-btn{display:none}body{background:#fff;padding:0}.page{box-shadow:none;width:100%}}
 @media(max-width:600px){body{padding:0}.page{width:100%;padding:14px 10px}.price-grid{grid-template-columns:1fr 1fr}.price-col:nth-child(2){border-right:none}.price-col:nth-child(3){border-top:1.5px solid #2980b9}.price-col:nth-child(4){border-top:1.5px solid #2980b9;border-right:none}}
 .loading{text-align:center;padding:60px;color:#888}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
+<button id="xls-btn" onclick="exportExcel()">📊 匯出 Excel</button>
 <button id="dl-btn" onclick="downloadImg()">📷 下載圖片</button>
 <div class="page" id="app"><div class="loading">載入中…</div></div>
 
 <script>
+const QR_B64 = 'iVBORw0KGgoAAAANSUhEUgAAALMAAACzCAMAAAD1yt3BAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAMAUExURf////39/bGxsQAAABUVFdXV1evr69zc3OHh4fn5+fLy8t/f397e3u3t7d3d3f7+/uXl5ejo6Pz8/Onp6ePj4/v7+/b29r6+vgUFBQsLC87OzszMzAMDA/Dw8AEBAdra2gwMDBMTE0tLS5KSkl5eXm9vb/j4+JeXlx8fH/X19Q0NDdnZ2dHR0REREerq6kdHR46OjllZWWlpaff395GRkRcXF/Hx8bKyss/Pz+/v7x0dHTQ0NBYWFnR0dBoaGhkZGVdXV0RERKCgoCMjIykpKcTExDIyMiAgIO7u7qGhoWBgYCsrK2NjY25ublhYWBwcHOzs7MrKyiYmJl9fX1xcXCEhIeTk5AoKCouLi2FhYYiIiPT09AgICENDQ8jIyMnJySgoKA4ODj09PQYGBgICAlZWVq6urhQUFAcHB9PT0yoqKmRkZBsbG+Dg4A8PD7m5uXFxcUJCQs3Nzfr6+tjY2MHBwS0tLScnJ1tbWzU1NUpKSsDAwGdnZ3l5eaKiogQEBJycnE5OTn5+fjw8PC4uLmVlZRAQEBgYGKmpqdvb24SEhD4+PkVFRXV1dTY2NmJiYkxMTDc3N8LCwj8/P9bW1hISEm1tbZWVlaSkpKOjo6qqqq+vr0lJSb+/v6ioqAkJCTg4OGZmZi8vL6ampkFBQbS0tIKCglNTU1paWlRUVPPz82xsbHh4eOfn5yQkJKysrI+Pj4qKiomJicbGxri4uKenp4WFhdLS0kZGRoGBgWhoaNTU1K2trVJSUiIiIqWlpXp6eo2Njbu7uzMzM09PT319fWtra6urqzk5OcXFxbq6uoODg5qamn9/f3Z2dp6entfX1+Li4pmZmSwsLDAwMHd3d2pqajExMXt7e7a2tkBAQJ+fn+bm5oeHh3Nzczo6OkhISIaGhsPDw7CwsICAgMfHx1VVVbW1tbOzs7e3t5ubm5iYmJOTk5CQkDs7O1FRUZaWloyMjHBwcLy8vJ2dnXJycnx8fCUlJR4eHk1NTb29vcvLy11dXZSUlNDQ0AAAAGwATrMAAAEAdFJOU////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////wBT9wclAAAACXBIWXMAACHVAAAh1QEEnLSdAAAQiElEQVR4Xu2d3ZHrOA6FVXXfnYBjcBB6UwwOTW9OxA9yBq5yCo5jcc4BJVCk6J923+2Z6e9ucSCIFGEIJEhZ7e1++eWXX3755XuY/mxy2HkdMOx2dshCpURi5wZX1EURRNDo+U9WccXe62xhnTo46nYsg0gGir0VR527W3GSeLXioGpSJNi+wdLzClyxzfyBcaCPuNjsxiw2Xwubj1Zk1ZwRB032XnPFIy8DrxoNDSJp+HkIfka15PJHXgZ1T/vJJqmXy+FgohW3rk/i3c+Z2HejlbvufDicu8nEPVqcu8HEcal2ctEv3sbrZqRBcD6dbvYvL+4HP7sZWF8g3eDzfd2tFfezn6317Kf8qMDv39EP19ipE8OVYu9aApP2Hbp2xWURifvDjwoYbH/+pNsY0Rk/qKBxkoJjBT8RLzFmgwuEMSjWFXDc6tnd5UcR6s9+UIMVNi6tMYjz05s2bziDsMKmzWlU1NAt9IMVshk1SptPdnx7aHMWTisU0n4Qob5l82ZLsJ8wg04od9MkXWKCYpimeRRNU5bZeN33bb5JHtJgBSn4t1oyKYuQpYkn7GE2UQmb5ZK7eV23ecAATaTPIZ0fRKiXn32kzlC5FRtBCTGLDYqKDYKccvYWKgGkZB/lBSmf8XP0MrgGLcVIUELM5g2KGoNEeZDaUA2S24z0GZE9z/iZYuBC7bt+DjZrvUEtqvlcgWO3mWJANZ7xM8WAbN5oGTIEomBA6zRl2sc8cGL3UYnp5cgLsZMYD3WbdeV3/CwTNj/tV+F1Wza/7+cyNi6X89gdLxc7b0VK6/3l4kNO7OzcrjudL2aWiVN3Y4sFXvcv+bm1fg6EPBjiOYDjb/Jz0XJJ2BT91DfY/L6fi9h43c9xfl7A8d/y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';
+
 const FB_PROJECT_ID = 'caixian-price-619c4';
 const FB_API_KEY    = 'AIzaSyDyIgF1T3qwVUdxTtfuo9SRwpiEQpfMaIA';
 
@@ -81,9 +87,11 @@ function retailProgressiveAddon(base) {
   const closest = targets.reduce((a, t) => Math.abs(ones - a) <= Math.abs(ones - t) ? a : t);
   return b + (closest === 10 ? 10 : closest);
 }
-function progressiveAddon(cost) {
-  if (cost <= 330) return 100;
-  const raw = cost * 0.3;
+function progressiveAddon(cost, rate, fixed) {
+  rate  = rate  || 0.30;
+  fixed = fixed || 100;
+  if (cost <= 330) return fixed;
+  const raw = cost * rate;
   const base = Math.floor(raw / 100) * 100;
   const ones = raw - base;
   const targets = [0, 30, 50, 80, 100];
@@ -97,7 +105,9 @@ function calcSell(item, all) {
   if (!cost) return Number(item.price)||0;
   if (item.type==='manual')      return Number(item.price)||0;
   if (item.type==='fixed')       return cost + (Number(item.markup)||0);
-  if (item.type==='progressive')        return cost + progressiveAddon(cost);
+  if (item.type==='progressive')        return cost + progressiveAddon(cost, 0.30, 100);
+  if (item.type==='progressive-20')     return cost + progressiveAddon(cost, 0.20, 70);
+  if (item.type==='progressive-15')     return cost + progressiveAddon(cost, 0.15, 50);
   if (item.type==='retail-progressive') return retailProgressiveAddon(cost);
   return Math.round(cost * (1 + (Number(item.markup)||0)/100));
 }
@@ -140,9 +150,13 @@ function catBlock(cat, all, divider) {
 }
 
 // ── 渲染頁面 ─────────────────────────────────────────────────────────────────
+let all_items_cache = [];
+let meta = {};
+
 function render(data) {
-  const meta = data.meta  || {};
+  meta = data.meta  || {};
   const all  = data.items || [];
+  all_items_cache = all;
   const upd  = data.updatedAt ? new Date(data.updatedAt).toLocaleString('zh-TW') : '';
 
   // 欄位定義
@@ -202,6 +216,174 @@ async function load() {
     document.getElementById('app').innerHTML = `<div class="loading">錯誤：${e.message}</div>`;
   }
 }
+
+// ── 匯出 Excel（三欄版型，仿原始報價單） ─────────────────────────────────
+async function exportExcel() {
+  const btn = document.getElementById('xls-btn');
+  btn.textContent = '⏳ 產生中…'; btn.disabled = true;
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('工作表1', {
+      pageSetup: {
+        paperSize: 9,           // A4
+        orientation: 'portrait',
+        fitToPage: true,
+        scale: 92,
+        horizontalCentered: true,
+        verticalCentered: true,
+        margins: {
+          left: 0.118, right: 0.118,
+          top: 0.197, bottom: 0.197,
+          header: 0, footer: 0
+        }
+      }
+    });
+
+    const FONT = { name: '新細明體', size: 16 };
+    const VALIGN = { vertical: 'middle' };
+    const FONT_B = { name: '新細明體', size: 16, bold: true };
+    const FONT_TITLE = { name: '新細明體', size: 24, bold: true };
+
+    // 欄寬
+    ws.columns = [
+      { width: 26 }, { width: 9 },
+      { width: 26 }, { width: 9 },
+      { width: 26 }, { width: 9 },
+    ];
+
+    // 列高（跟原始檔一致）
+    ws.getRow(1).height = 41.25;  // 55px
+    ws.getRow(2).height = 30;     // 40px
+    ws.getRow(3).height = 30;
+    ws.getRow(4).height = 30;
+    ws.getRow(5).height = 30;
+    ws.getRow(6).height = 28.5;
+
+    // ── 表頭 ──
+    ws.mergeCells('A1:F1');
+    const t = ws.getCell('A1');
+    t.value = '採 鮮 農 產 行';
+    t.font = FONT_TITLE;
+    t.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const d = new Date();
+    const dateStr = `報價日期：${d.getMonth()+1}月${d.getDate()}日`;
+
+    const hdrRows = [
+      ['A2:C2', `聯絡人：${meta.contact || ''}`, 'left',  'D2:F2', dateStr,      'center'],
+      ['A3:C3', `手　機：${meta.phone   || ''}`, 'left',  'D3:F3', '官方LINE：', 'left'],
+      ['A4:C4', 'PS：本報價單以當日行情報價',    'left',  'D4:F4', meta.line || '', 'left'],
+    ];
+    hdrRows.forEach(([lm, lv, la, rm, rv, ra]) => {
+      ws.mergeCells(lm);
+      const lc = ws.getCell(lm.split(':')[0]);
+      lc.value = lv; lc.font = FONT_B; lc.alignment = { horizontal: la };
+      ws.mergeCells(rm);
+      const rc = ws.getCell(rm.split(':')[0]);
+      rc.value = rv; rc.font = FONT_B; rc.alignment = { horizontal: ra };
+    });
+
+    // ── 欄標題（第6列） ──
+    ['A6','C6','E6'].forEach(a => { const cc = ws.getCell(a); cc.value='品項'; cc.font=FONT; });
+    ['B6','D6','F6'].forEach(a => { const cc = ws.getCell(a); cc.value='單價'; cc.font=FONT; cc.alignment={horizontal:'center'}; });
+
+    // ── 依類別收集品項，自動分配到欄位（一頁 A4 內） ──
+    const MAX_ROWS = 40;  // 一欄最多幾列
+
+    function catItems(catId) {
+      return all_items_cache
+        .filter(i => i.cat===catId && i.visible!==false)
+        .map(item => [item.name, calcSell(item, all_items_cache)])
+        .filter(x => x[1] > 0);
+    }
+
+    // 順序：截切 → 葉菜 → 瓜果 → 菇
+    const allRows = [
+      ...catItems('c4'),
+      ...catItems('c1'),
+      ...catItems('c2'),
+      ...catItems('c3'),
+    ];
+
+    // 依 MAX_ROWS 切成多欄
+    const cols = [];
+    for (let i = 0; i < allRows.length; i += MAX_ROWS) {
+      cols.push(allRows.slice(i, i + MAX_ROWS));
+    }
+    const numColPairs = Math.max(cols.length, 3);
+    const maxLen = Math.max(...cols.map(x => x.length), 1);
+
+    // 補足欄位設定（第4組以後）
+    for (let ci = 3; ci < numColPairs; ci++) {
+      ws.getColumn(ci*2 + 1).width = 26;
+      ws.getColumn(ci*2 + 2).width = 9;
+
+      // 表頭
+      const nh = ws.getCell(6, ci*2 + 1); nh.value='品項'; nh.font=FONT;
+      const ph = ws.getCell(6, ci*2 + 2); ph.value='單價'; ph.font=FONT; ph.alignment={horizontal:'center'};
+    }
+
+    // 填資料
+    for (let i = 0; i < maxLen; i++) {
+      const r = 7 + i;
+      for (let ci = 0; ci < numColPairs; ci++) {
+        const arr = cols[ci] || [];
+        const nc = ci*2 + 1, pc = ci*2 + 2;
+        const nCell = ws.getCell(r, nc);
+        const pCell = ws.getCell(r, pc);
+        nCell.font = FONT;
+        pCell.font = FONT;
+        if (arr[i]) {
+          nCell.value = arr[i][0];
+          nCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false, shrinkToFit: false };
+          pCell.value = arr[i][1];
+          pCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        }
+      }
+    }
+
+    // ── 框線：整個資料表格（第6列到最後一列，A~F欄） ──
+    const lastRow = 6 + maxLen;
+    for (let r = 7; r <= lastRow; r++) ws.getRow(r).height = 28.5;
+    const lastCol = numColPairs * 2;
+    for (let r = 6; r <= lastRow; r++) {
+      for (let col = 1; col <= lastCol; col++) {
+        const cell = ws.getCell(r, col);
+        cell.border = {
+          top:    { style: r === 6 ? 'medium' : 'thin' },
+          bottom: { style: r === lastRow ? 'medium' : 'thin' },
+          left:   { style: col === 1 ? 'medium' : 'thin' },
+          right:  { style: col === lastCol ? 'medium' : 'thin' },
+        };
+      }
+    }
+
+    // ── QR code 圖片（放在 E3 附近，跟原始檔一致） ──
+    try {
+      const imgId = wb.addImage({ base64: QR_B64, extension: 'png' });
+      // 原始檔位置：從 E3 到 F5（0-indexed col4 row2 → col5 row4）
+      ws.addImage(imgId, {
+        tl: { nativeCol: 4, nativeColOff: 806769, nativeRow: 2, nativeRowOff: 950 },
+        ext: { width: 76, height: 76 }
+      });
+    } catch(e) { console.warn('QR 圖片加入失敗', e); }
+
+    // ── 下載 ──
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const dateFile = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${dateFile}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch(e) {
+    alert('匯出失敗：' + e.message);
+  } finally {
+    btn.textContent = '📊 匯出 Excel'; btn.disabled = false;
+  }
+}
+
 async function downloadImg() {
   const btn = document.getElementById('dl-btn');
   btn.textContent = '⏳ 產生中…'; btn.disabled = true;
