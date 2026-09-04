@@ -334,7 +334,11 @@ async function exportExcel() {
         nCell.font = FONT;
         pCell.font = FONT;
         if (arr[i]) {
-          nCell.value = arr[i][0];
+          const nm = arr[i][0];
+          let w = 0;
+          for (const ch of nm) w += /[\u4e00-\u9fff\u3000-\u303f]/.test(ch) ? 2 : 1;
+          nCell.value = nm;
+          nCell.font = w > 16 ? { name: '新細明體', size: 14 } : FONT;
           nCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: false, shrinkToFit: false };
           pCell.value = arr[i][1];
           pCell.alignment = { horizontal: 'center', vertical: 'middle' };
