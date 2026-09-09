@@ -269,8 +269,25 @@ function effCost(item) {
 }
 
 // ── 現場報價計算（用現場輸入的成本與計算方式）─────────────────────────────
-function quotePrice(item) {
+function quotePrice(item, depth) {
+  depth = depth || 0;
   if (override[item.id] !== undefined) return override[item.id];
+
+  // 截切：沿用 admin 公式（整件切＝原料售價+工費；散切＝來源售價÷重量÷成率+加價）
+  if (item.cat === 'c4' && item.srcId && depth < 5) {
+    const src = allItems.find(i => i.id === item.srcId);
+    if (!src) return 0;
+    const base = quotePrice(src, depth + 1);
+    if (!base) return 0;
+    if ((item.cutType || 'whole') === 'whole') {
+      return Math.round(base + (Number(item.cutFee) || 0));
+    }
+    const w = Number(item.srcWeight) || 1;
+    const y = Number(item.cutYield)  || 1;
+    const a = Number(item.cutAddon)  || 0;
+    return Math.round((base / w) / y + a);
+  }
+
   const cost = Number(costs[item.id]) || 0;
   const t    = types[item.id] || 'progressive';
   if (!cost) return 0;
@@ -278,16 +295,18 @@ function quotePrice(item) {
   if (t === 'progressive-20')     return cost + progressiveAddon(cost, 0.20, 70);
   if (t === 'progressive-15')     return cost + progressiveAddon(cost, 0.15, 50);
   if (t === 'retail-progressive') return retailProgressiveAddon(cost);
-  return cost;
+  if (t === 'retail-13')          return retailProgressive13(cost);
+  return cost + progressiveAddon(cost, 0.30, 100);
 }
 
 function refreshItem(id) {
-  const item = allItems.find(i => i.id === id);
-  if (!item) return;
-  const sp = quotePrice(item);
-  prices[id] = sp;
-  const inp = document.getElementById('p-' + id);
-  if (inp) inp.value = sp || '';
+  // 重算全部（截切會跟著原料連動）
+  allItems.forEach(it => {
+    const sp = quotePrice(it);
+    prices[it.id] = sp;
+    const inp = document.getElementById('p-' + it.id);
+    if (inp) inp.value = sp || '';
+  });
   updateTotal();
 }
 
@@ -341,9 +360,12 @@ function render() {
         row.className = 'item-row' + (checked[item.id] ? ' checked' : '');
         row.dataset.id = item.id;
         const dis = !checked[item.id] ? 'disabled' : '';
+        const isCut = item.cat === 'c4' && item.srcId;
         row.innerHTML = `
           <input type="checkbox" class="item-cb" ${checked[item.id]?'checked':''} onchange="toggleCheck('${item.id}',this.checked)">
           <span class="item-name">${item.name}</span>
+          ${isCut ? `<span style="font-size:10px;color:#aaa;text-align:right">依原料</span>
+          <span style="font-size:10px;color:#aaa;text-align:center">${(item.cutType||'whole')==='whole'?'整件':'散切'}</span>` : `
           <input type="number" class="cost-input" value="${costs[item.id]||''}" min="0" placeholder="成本" ${dis}
             onchange="costs['${item.id}']=Number(this.value)||0;delete override['${item.id}'];refreshItem('${item.id}')">
           <select class="type-select" ${dis} onchange="types['${item.id}']=this.value;delete override['${item.id}'];refreshItem('${item.id}')">
@@ -352,7 +374,7 @@ function render() {
             <option value="progressive-15"    ${types[item.id]==='progressive-15'   ?'selected':''}>1.15</option>
             <option value="retail-progressive"${types[item.id]==='retail-progressive'?'selected':''}>散售</option>
             <option value="retail-13"         ${types[item.id]==='retail-13'        ?'selected':''}>散售1.3</option>
-          </select>
+          </select>`}
           <input type="number" class="price-input" id="p-${item.id}" value="${sp||''}" min="0" ${dis}
             onchange="override['${item.id}']=Number(this.value)||0;prices['${item.id}']=override['${item.id}'];updateTotal()">`;
         block.appendChild(row);
