@@ -195,16 +195,29 @@ let checked = {};
 let prices  = {};
 let costs   = {};  // 現場輸入的成本
 let types   = {};  // 現場選的計算方式
+let override= {};  // 直接手打的售價（優先）
 
 // ── 計算售價 ─────────────────────────────────────────────────────────────────
 
 // 散售累進計算
+
+// 散售1.3：≤25 用1.3，其餘 1.2
+function retailProgressive13(base) {
+  const rate = base <= 25 ? 1.30 : 1.20;
+  const raw = base * rate;
+  const b = Math.floor(raw / 10) * 10;
+  const ones = raw - b;
+  const targets = [0, 3, 5, 8, 10];
+  const closest = targets.reduce((a, t) => Math.abs(ones - a) <= Math.abs(ones - t) ? a : t);
+  return b + (closest === 10 ? 10 : closest);
+}
+
 function retailProgressiveAddon(base) {
-  if (base <= 25) return base + 10;
   let rate;
-  if (base <= 99)  rate = 1.45;
+  if (base <= 25)       rate = 1.50;
+  else if (base <= 99)  rate = 1.45;
   else if (base <= 199) rate = 1.40;
-  else rate = 1.35;
+  else                  rate = 1.35;
   const raw = base * rate;
   const b = Math.floor(raw / 10) * 10;
   const ones = raw - b;
@@ -242,14 +255,24 @@ function calcSell(item) {
   if (item.type==='progressive-20')     return cost + progressiveAddon(cost, 0.20, 70);
   if (item.type==='progressive-15')     return cost + progressiveAddon(cost, 0.15, 50);
   if (item.type==='retail-progressive') return retailProgressiveAddon(cost);
+  if (item.type==='retail-13')          return retailProgressive13(cost);
   return Math.round(cost * (1 + (Number(item.markup)||0)/100));
+}
+
+// 取得有效成本：截切品項用原料的成本
+function effCost(item) {
+  if (item.cat === 'c4' && item.srcId) {
+    const src = allItems.find(i => i.id === item.srcId);
+    if (src) return Number(src.cost) || 0;
+  }
+  return Number(item.cost) || 0;
 }
 
 // ── 現場報價計算（用現場輸入的成本與計算方式）─────────────────────────────
 function quotePrice(item) {
+  if (override[item.id] !== undefined) return override[item.id];
   const cost = Number(costs[item.id]) || 0;
   const t    = types[item.id] || 'progressive';
-  if (t === 'manual') return Number(prices[item.id]) || 0;
   if (!cost) return 0;
   if (t === 'progressive')        return cost + progressiveAddon(cost, 0.30, 100);
   if (t === 'progressive-20')     return cost + progressiveAddon(cost, 0.20, 70);
@@ -306,8 +329,11 @@ function render() {
 
       validItems.forEach(item => {
         // 成本與計算方式：第一次進來帶入 admin 設定
-        if (costs[item.id] === undefined) costs[item.id] = Number(item.cost) || 0;
-        if (types[item.id] === undefined) types[item.id] = item.type || 'progressive';
+        if (costs[item.id] === undefined) costs[item.id] = effCost(item);
+        if (types[item.id] === undefined) {
+          const valid = ['progressive','progressive-20','progressive-15','retail-progressive','retail-13'];
+          types[item.id] = valid.includes(item.type) ? item.type : 'progressive';
+        }
         const sp = quotePrice(item);
         prices[item.id] = sp;
 
@@ -319,16 +345,16 @@ function render() {
           <input type="checkbox" class="item-cb" ${checked[item.id]?'checked':''} onchange="toggleCheck('${item.id}',this.checked)">
           <span class="item-name">${item.name}</span>
           <input type="number" class="cost-input" value="${costs[item.id]||''}" min="0" placeholder="成本" ${dis}
-            onchange="costs['${item.id}']=Number(this.value)||0;refreshItem('${item.id}')">
-          <select class="type-select" ${dis} onchange="types['${item.id}']=this.value;refreshItem('${item.id}')">
+            onchange="costs['${item.id}']=Number(this.value)||0;delete override['${item.id}'];refreshItem('${item.id}')">
+          <select class="type-select" ${dis} onchange="types['${item.id}']=this.value;delete override['${item.id}'];refreshItem('${item.id}')">
             <option value="progressive"       ${types[item.id]==='progressive'      ?'selected':''}>1.3</option>
             <option value="progressive-20"    ${types[item.id]==='progressive-20'   ?'selected':''}>1.2</option>
             <option value="progressive-15"    ${types[item.id]==='progressive-15'   ?'selected':''}>1.15</option>
             <option value="retail-progressive"${types[item.id]==='retail-progressive'?'selected':''}>散售</option>
-            <option value="manual"            ${types[item.id]==='manual'           ?'selected':''}>手動</option>
+            <option value="retail-13"         ${types[item.id]==='retail-13'        ?'selected':''}>散售1.3</option>
           </select>
           <input type="number" class="price-input" id="p-${item.id}" value="${sp||''}" min="0" ${dis}
-            onchange="prices['${item.id}']=Number(this.value)||0;types['${item.id}']='manual';updateTotal()">`;
+            onchange="override['${item.id}']=Number(this.value)||0;prices['${item.id}']=override['${item.id}'];updateTotal()">`;
         block.appendChild(row);
       });
       col.appendChild(block);
@@ -403,6 +429,7 @@ function clearAll() {
   costs = {};
   types = {};
   prices = {};
+  override = {};
   render();
 }
 

@@ -74,12 +74,24 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // ── 計算售價 ────────────────────────────────────────────────────────────────
 
 // 散售累進計算
+
+// 散售1.3：≤25 用1.3，其餘 1.2
+function retailProgressive13(base) {
+  const rate = base <= 25 ? 1.30 : 1.20;
+  const raw = base * rate;
+  const b = Math.floor(raw / 10) * 10;
+  const ones = raw - b;
+  const targets = [0, 3, 5, 8, 10];
+  const closest = targets.reduce((a, t) => Math.abs(ones - a) <= Math.abs(ones - t) ? a : t);
+  return b + (closest === 10 ? 10 : closest);
+}
+
 function retailProgressiveAddon(base) {
-  if (base <= 25) return base + 10;
   let rate;
-  if (base <= 99)  rate = 1.45;
+  if (base <= 25)       rate = 1.50;
+  else if (base <= 99)  rate = 1.45;
   else if (base <= 199) rate = 1.40;
-  else rate = 1.35;
+  else                  rate = 1.35;
   const raw = base * rate;
   const b = Math.floor(raw / 10) * 10;
   const ones = raw - b;
@@ -109,6 +121,7 @@ function calcSell(item, all) {
   if (item.type==='progressive-20')     return cost + progressiveAddon(cost, 0.20, 70);
   if (item.type==='progressive-15')     return cost + progressiveAddon(cost, 0.15, 50);
   if (item.type==='retail-progressive') return retailProgressiveAddon(cost);
+  if (item.type==='retail-13')          return retailProgressive13(cost);
   return Math.round(cost * (1 + (Number(item.markup)||0)/100));
 }
 
