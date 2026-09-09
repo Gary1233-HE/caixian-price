@@ -50,6 +50,10 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
 
 /* ── 品項行 ── */
 .item-row{display:grid;grid-template-columns:18px 1fr 56px 62px 62px;gap:4px;align-items:center;padding:4px 8px;border-bottom:1px solid #f0f5f0;background:#fff}
+.item-row.cut{grid-template-columns:18px 1fr 44px 40px 38px 38px 56px}
+.cut-type{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:2px 1px;font-size:10px;font-family:inherit;background:#fff}
+.cut-in{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:2px 3px;font-size:11px;text-align:right;font-family:inherit}
+.cut-type:disabled,.cut-in:disabled{background:#f8f8f8;color:#bbb}
 .cost-input{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:3px 4px;font-size:12px;text-align:right;font-family:inherit}
 .cost-input:disabled{background:#f8f8f8;color:#bbb}
 .type-select{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:2px 3px;font-size:11px;font-family:inherit;background:#fff}
@@ -196,6 +200,7 @@ let prices  = {};
 let costs   = {};  // 現場輸入的成本
 let types   = {};  // 現場選的計算方式
 let override= {};  // 直接手打的售價（優先）
+let cutP    = {};  // 現場調整的截切參數 {type,fee,weight,yield,addon}
 
 // ── 計算售價 ─────────────────────────────────────────────────────────────────
 
@@ -273,18 +278,21 @@ function quotePrice(item, depth) {
   depth = depth || 0;
   if (override[item.id] !== undefined) return override[item.id];
 
-  // 截切：沿用 admin 公式（整件切＝原料售價+工費；散切＝來源售價÷重量÷成率+加價）
+  // 截切：沿用 admin 公式，參數可現場調整
   if (item.cat === 'c4' && item.srcId && depth < 5) {
     const src = allItems.find(i => i.id === item.srcId);
     if (!src) return 0;
     const base = quotePrice(src, depth + 1);
     if (!base) return 0;
-    if ((item.cutType || 'whole') === 'whole') {
-      return Math.round(base + (Number(item.cutFee) || 0));
+    const cp = cutP[item.id] || {};
+    const ct = cp.type !== undefined ? cp.type : (item.cutType || 'whole');
+    if (ct === 'whole') {
+      const fee = cp.fee !== undefined ? cp.fee : (Number(item.cutFee) || 0);
+      return Math.round(base + fee);
     }
-    const w = Number(item.srcWeight) || 1;
-    const y = Number(item.cutYield)  || 1;
-    const a = Number(item.cutAddon)  || 0;
+    const w = (cp.weight !== undefined ? cp.weight : Number(item.srcWeight)) || 1;
+    const y = (cp.yld    !== undefined ? cp.yld    : Number(item.cutYield))  || 1;
+    const a = (cp.addon  !== undefined ? cp.addon  : Number(item.cutAddon))  || 0;
     return Math.round((base / w) / y + a);
   }
 
@@ -297,6 +305,13 @@ function quotePrice(item, depth) {
   if (t === 'retail-progressive') return retailProgressiveAddon(cost);
   if (t === 'retail-13')          return retailProgressive13(cost);
   return cost + progressiveAddon(cost, 0.30, 100);
+}
+
+function setCut(id, key, val) {
+  if (!cutP[id]) cutP[id] = {};
+  cutP[id][key] = key === 'type' ? val : (Number(val) || 0);
+  delete override[id];
+  render();
 }
 
 function refreshItem(id) {
@@ -357,15 +372,33 @@ function render() {
         prices[item.id] = sp;
 
         const row = document.createElement('div');
-        row.className = 'item-row' + (checked[item.id] ? ' checked' : '');
+        row.className = 'item-row' + (checked[item.id] ? ' checked' : '') + (item.cat==='c4'&&item.srcId ? ' cut' : '');
         row.dataset.id = item.id;
         const dis = !checked[item.id] ? 'disabled' : '';
         const isCut = item.cat === 'c4' && item.srcId;
         row.innerHTML = `
           <input type="checkbox" class="item-cb" ${checked[item.id]?'checked':''} onchange="toggleCheck('${item.id}',this.checked)">
           <span class="item-name">${item.name}</span>
-          ${isCut ? `<span style="font-size:10px;color:#aaa;text-align:right">依原料</span>
-          <span style="font-size:10px;color:#aaa;text-align:center">${(item.cutType||'whole')==='whole'?'整件':'散切'}</span>` : `
+          ${isCut ? (() => {
+            const cp = cutP[item.id] || {};
+            const ct = cp.type !== undefined ? cp.type : (item.cutType || 'whole');
+            const isW = ct === 'whole';
+            const fee = cp.fee    !== undefined ? cp.fee    : (Number(item.cutFee)||0);
+            const wt  = cp.weight !== undefined ? cp.weight : (Number(item.srcWeight)||1);
+            const yl  = cp.yld    !== undefined ? cp.yld    : (Number(item.cutYield)||0.8);
+            const ad  = cp.addon  !== undefined ? cp.addon  : (Number(item.cutAddon)||0);
+            return `
+            <select class="cut-type" ${dis} onchange="setCut('${item.id}','type',this.value)">
+              <option value="whole" ${isW?'selected':''}>整件</option>
+              <option value="loose" ${!isW?'selected':''}>散切</option>
+            </select>
+            ${isW
+              ? `<input type="number" class="cut-in" value="${fee}" title="工費" ${dis} onchange="setCut('${item.id}','fee',this.value)"><span></span>`
+              : `<input type="number" class="cut-in" step="0.1" value="${wt}" title="重量" ${dis} onchange="setCut('${item.id}','weight',this.value)">
+                 <input type="number" class="cut-in" step="0.01" value="${yl}" title="成率" ${dis} onchange="setCut('${item.id}','yld',this.value)">
+                 <input type="number" class="cut-in" value="${ad}" title="加價" ${dis} onchange="setCut('${item.id}','addon',this.value)">`}
+            `;
+          })() : `
           <input type="number" class="cost-input" value="${costs[item.id]||''}" min="0" placeholder="成本" ${dis}
             onchange="costs['${item.id}']=Number(this.value)||0;delete override['${item.id}'];refreshItem('${item.id}')">
           <select class="type-select" ${dis} onchange="types['${item.id}']=this.value;delete override['${item.id}'];refreshItem('${item.id}')">
@@ -452,6 +485,7 @@ function clearAll() {
   types = {};
   prices = {};
   override = {};
+  cutP = {};
   render();
 }
 
