@@ -77,7 +77,7 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 
 // 散售1.3：≤25 用1.3，其餘 1.2
 function retailProgressive13(base) {
-  const rate = base <= 25 ? 1.30 : 1.20;
+  const rate = base <= 25 ? 1.30 : 1.25;
   const raw = base * rate;
   const b = Math.floor(raw / 10) * 10;
   const ones = raw - b;
