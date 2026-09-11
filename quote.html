@@ -56,6 +56,7 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
 .item-row{display:grid;grid-template-columns:18px 1fr 56px 62px 62px;gap:4px;align-items:center;padding:4px 8px;border-bottom:1px solid #f0f5f0;background:#fff}
 .item-row.cut{grid-template-columns:18px 1fr 44px 38px 36px 36px 62px}
 .item-row.cut.whole{grid-template-columns:18px 1fr 44px 56px 70px}
+.item-row.fixedmode{grid-template-columns:18px 1fr 48px 52px 44px 58px}
 .cut-type{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:2px 1px;font-size:10px;font-family:inherit;background:#fff}
 .cut-in{width:100%;border:1px solid #dde8dd;border-radius:4px;padding:2px 3px;font-size:11px;text-align:right;font-family:inherit}
 .cut-type:disabled,.cut-in:disabled{background:#f8f8f8;color:#bbb}
@@ -207,6 +208,7 @@ let costs   = {};  // 現場輸入的成本
 let types   = {};  // 現場選的計算方式
 let override= {};  // 直接手打的售價（優先）
 let cutP    = {};  // 現場調整的截切參數 {type,fee,weight,yield,addon}
+let fixedAdd= {};  // 加元模式的固定加價
 
 // ── 計算售價 ─────────────────────────────────────────────────────────────────
 
@@ -310,6 +312,7 @@ function quotePrice(item, depth) {
   if (t === 'progressive-15')     return cost + progressiveAddon(cost, 0.15, 50);
   if (t === 'retail-progressive') return retailProgressiveAddon(cost);
   if (t === 'retail-13')          return retailProgressive13(cost);
+  if (t === 'fixed')              return cost + (Number(fixedAdd[item.id]) || 0);
   return cost + progressiveAddon(cost, 0.30, 100);
 }
 
@@ -324,6 +327,7 @@ function applyCatType(catId) {
     types[item.id] = t;
     delete override[item.id];
   });
+  savePrefs();
   render();
 }
 
@@ -369,10 +373,29 @@ function focusCell(el) {
   if (el.tagName === 'INPUT') { try { el.select(); } catch(_){} }
 }
 
+// ── 記住設定（計算方式／加元／截切參數）────────────────────────────────
+const LS_KEY = 'cxnc_quote_prefs';
+function savePrefs() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ types, fixedAdd, cutP }));
+  } catch(e) {}
+}
+function loadPrefs() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (!s) return;
+    const d = JSON.parse(s);
+    if (d.types)    types    = d.types;
+    if (d.fixedAdd) fixedAdd = d.fixedAdd;
+    if (d.cutP)     cutP     = d.cutP;
+  } catch(e) {}
+}
+
 function setCut(id, key, val) {
   if (!cutP[id]) cutP[id] = {};
   cutP[id][key] = key === 'type' ? val : (Number(val) || 0);
   delete override[id];
+  savePrefs();
   render();
 }
 
@@ -431,6 +454,7 @@ function render() {
               <option value="progressive-15">1.15</option>
               <option value="retail-progressive">散售</option>
               <option value="retail-13">散售1.3</option>
+              <option value="fixed">加元</option>
             </select>
             <button onclick="applyCatType('${cat.id}')">全套用</button>
           </span>`;
@@ -452,7 +476,8 @@ function render() {
         const _ct = _cp.type !== undefined ? _cp.type : (item.cutType || 'whole');
         row.className = 'item-row'
           + (checked[item.id] ? ' checked' : '')
-          + (item.cat==='c4'&&item.srcId ? (_ct==='whole' ? ' cut whole' : ' cut') : '');
+          + (item.cat==='c4'&&item.srcId ? (_ct==='whole' ? ' cut whole' : ' cut')
+             : (types[item.id]==='fixed' ? ' fixedmode' : ''));
         row.dataset.id = item.id;
         const dis = !checked[item.id] ? 'disabled' : '';
         const isCut = item.cat === 'c4' && item.srcId;
@@ -484,13 +509,18 @@ function render() {
           })() : `
           <input type="number" class="cost-input" value="${costs[item.id]||''}" min="0" placeholder="成本" ${dis}
             onchange="costs['${item.id}']=Number(this.value)||0;delete override['${item.id}'];refreshItem('${item.id}')">
-          <select class="type-select" ${dis} onchange="types['${item.id}']=this.value;delete override['${item.id}'];refreshItem('${item.id}')">
+          <select class="type-select" ${dis} onchange="types['${item.id}']=this.value;delete override['${item.id}'];savePrefs();render()">
             <option value="progressive"       ${types[item.id]==='progressive'      ?'selected':''}>1.3</option>
             <option value="progressive-20"    ${types[item.id]==='progressive-20'   ?'selected':''}>1.2</option>
             <option value="progressive-15"    ${types[item.id]==='progressive-15'   ?'selected':''}>1.15</option>
             <option value="retail-progressive"${types[item.id]==='retail-progressive'?'selected':''}>散售</option>
             <option value="retail-13"         ${types[item.id]==='retail-13'        ?'selected':''}>散售1.3</option>
-          </select>`}
+            <option value="fixed"             ${types[item.id]==='fixed'            ?'selected':''}>加元</option>
+          </select>
+          ${types[item.id]==='fixed'
+            ? `<input type="number" class="cost-input" value="${fixedAdd[item.id]||''}" placeholder="+元" ${dis}
+                 onchange="fixedAdd['${item.id}']=Number(this.value)||0;delete override['${item.id}'];savePrefs();refreshItem('${item.id}')">`
+            : ''}`}
           <input type="number" class="price-input" id="p-${item.id}" value="${sp||''}" min="0" ${dis}
             onchange="override['${item.id}']=Number(this.value)||0;prices['${item.id}']=override['${item.id}'];updateTotal()">`;
         block.appendChild(row);
@@ -569,6 +599,8 @@ function clearAll() {
   prices = {};
   override = {};
   cutP = {};
+  fixedAdd = {};
+  savePrefs();
   render();
 }
 
@@ -956,6 +988,7 @@ async function load() {
     const snap = await app.firestore().collection('price_board').doc('current').get();
     if (snap.exists) { const d=snap.data(); allItems=d.items||[]; meta=d.meta||{}; }
   } catch(e) { console.warn('Firebase 載入失敗', e.message); }
+  loadPrefs();
   render();
 }
 load();
