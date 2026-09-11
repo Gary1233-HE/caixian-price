@@ -112,7 +112,7 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
   <div class="toolbar-title">🔖 現場報價單</div>
   <div class="toolbar-right">
     <span id="count-badge" style="font-size:11px;opacity:.8">已選 0 項</span>
-    <button class="btn-gh btn-sm" onclick="clearAll()">清除</button>
+    <button class="btn-gh btn-sm" onclick="clearAll()">重設</button>
     <button class="btn-w" onclick="showPreview()">👁 預覽</button>
     <button class="btn-g" id="xls-btn" onclick="exportQuoteExcel(false)">📊 Excel(KG)</button>
     <button class="btn-g" id="xls-jin-btn" onclick="exportQuoteExcel(true)" style="background:#c0392b">📊 Excel(台斤)</button>
@@ -122,27 +122,11 @@ button{cursor:pointer;border:none;border-radius:5px;font-family:inherit;font-wei
 
 <!-- 設定欄 -->
 <div class="settings-bar">
-  <div><label>日期</label><input type="date" id="q-date" style="width:130px"></div>
-  <div><label>客戶</label><input type="text" id="q-customer" placeholder="客戶 / 餐廳名稱" style="width:160px"></div>
-  <div><label>備註</label><input type="text" id="q-note" placeholder="付款方式…" style="width:180px"></div>
-
-</div>
-
-<!-- 合計 -->
-<div id="total-bar">
-  <div>
-    <span class="total-label">合計金額</span>
-    <span class="checked-count" id="count-display">（已選 0 項）</span>
-  </div>
-  <span class="total-val" id="total-display">NT$0</span>
-</div>
-
-<!-- 全部全選 -->
-<div style="background:#fff;border-bottom:1px solid #dde8dd;padding:6px 14px;display:flex;align-items:center;justify-content:flex-end;gap:8px">
-  <label style="font-size:12px;color:#555;cursor:pointer;display:flex;align-items:center;gap:5px;font-weight:700">
-    <input type="checkbox" id="select-all-global" style="width:16px;height:16px;cursor:pointer">
-    全部全選
-  </label>
+  <label style="font-size:14px;margin-right:6px">報價日期</label>
+  <input type="date" id="q-date" style="font-size:18px;padding:8px 12px;width:210px;font-weight:700">
+  <span id="count-display" style="margin-left:auto;font-size:15px;font-weight:900;color:#1a6a6a"></span>
+  <input type="hidden" id="q-customer" value="">
+  <input type="hidden" id="q-note" value="">
 </div>
 
 <!-- 三欄 -->
@@ -463,6 +447,7 @@ function render() {
 
       validItems.forEach(item => {
         // 成本與計算方式：第一次進來帶入 admin 設定
+        if (checked[item.id] === undefined) checked[item.id] = true;  // 預設全選
         if (costs[item.id] === undefined) costs[item.id] = effCost(item);
         if (types[item.id] === undefined) {
           const valid = ['progressive','progressive-20','progressive-15','retail-progressive','retail-13'];
@@ -556,20 +541,9 @@ function selectCol(colIdx, isChecked) {
   render();
 }
 
-// 全部全選
-document.getElementById('select-all-global').onchange = function() {
-  allItems.forEach(item => {
-    if (item.visible===false) return;
-    if (calcSell(item) === 0) return;
-    checked[item.id] = this.checked;
-  });
-  render();
-};
+
 
 function syncGlobalCheckbox() {
-  const allValid = allItems.filter(i => i.visible!==false && calcSell(i)>0);
-  const allChecked = allValid.length > 0 && allValid.every(i => checked[i.id]);
-  document.getElementById('select-all-global').checked = allChecked;
   // sync col checkboxes
   COLS.forEach((catList, colIdx) => {
     const colItems = catList.flatMap(cat => allItems.filter(i=>i.cat===cat.id&&i.visible!==false&&calcSell(i)>0));
@@ -580,19 +554,16 @@ function syncGlobalCheckbox() {
 }
 
 function updateTotal() {
-  let total = 0, count = 0;
-  Object.entries(checked).forEach(([id, isChecked]) => {
-    if (!isChecked) return;
-    count++;
-    total += Number(prices[id]) || 0;
-  });
-  document.getElementById('total-display').textContent = 'NT$' + total.toLocaleString('zh-TW');
-  document.getElementById('count-display').textContent = `（已選 ${count} 項）`;
-  document.getElementById('count-badge').textContent = `已選 ${count} 項`;
+  let count = 0;
+  Object.entries(checked).forEach(([id, isChecked]) => { if (isChecked) count++; });
+  const cd = document.getElementById('count-display');
+  if (cd) cd.textContent = `已選 ${count} 項`;
+  const cb = document.getElementById('count-badge');
+  if (cb) cb.textContent = `已選 ${count} 項`;
 }
 
 function clearAll() {
-  if (!confirm('清除所有勾選？')) return;
+  if (!confirm('重設所有設定？（計算方式、成本、截切參數會回到 admin 預設）')) return;
   checked = {};
   costs = {};
   types = {};
@@ -692,14 +663,6 @@ async function exportQuoteExcel(useTaijin) {
       rc.value = rv; rc.font = FONT_B; rc.alignment = { horizontal: ra, vertical: 'middle' };
     });
 
-    // 客戶名稱（放第5列右側）
-    if (customer) {
-      ws.mergeCells('D5:F5');
-      const cc = ws.getCell('D5');
-      cc.value = `客戶：${customer}`;
-      cc.font = FONT_B;
-      cc.alignment = { horizontal: 'right', vertical: 'middle' };
-    }
 
     // 表頭列
     ['A6','C6','E6'].forEach(a => { const cc = ws.getCell(a); cc.value='品項'; cc.font=FONT; cc.alignment={vertical:'middle'}; });
