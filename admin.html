@@ -1564,5 +1564,133 @@ document.addEventListener('keydown', function(e) {
   }
 }, false);
 </script>
+
+<!-- ===== 叫貨 App 送來的成本（待確認，不會直接發布）===== -->
+<style>
+#cc-btn{background:#fff3d6;color:#8a5a00;border:1px solid #e8c36a;padding:4px 9px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;margin-right:4px}
+#cc-btn.has{background:#f5b800;color:#2a1a00;border-color:#d89b00;animation:ccp 1.6s ease-in-out infinite}
+@keyframes ccp{0%,100%{box-shadow:0 0 0 0 rgba(245,184,0,.6)}50%{box-shadow:0 0 0 6px rgba(245,184,0,0)}}
+#cc-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center;padding:12px}
+.cc-box{background:#fff;border-radius:12px;padding:18px;width:min(720px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.cc-h{font-size:16px;font-weight:800;margin-bottom:8px}.cc-h small{font-weight:500;color:var(--muted);font-size:12px;margin-left:6px}
+.cc-note{background:#fff3d6;border:1px solid #e8c36a;color:#7a4b00;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:10px}
+#cc-list{overflow:auto;flex:1;min-height:60px}
+.cc-r{border:1px solid var(--bd);border-radius:9px;padding:10px 12px;margin-bottom:8px}.cc-r.big{border-color:#e0a23a;background:#fffaf0}
+.cc-r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cc-r1 input{width:18px;height:18px}.cc-r1 b{font-size:15px}.cc-r1 .nv{font-family:'Space Mono',monospace;font-weight:700;color:var(--green)}
+.cc-r1 small{color:var(--muted)}
+.cc-r select{width:100%;margin-top:8px;padding:8px;border:1px solid var(--bd);border-radius:7px;font-size:14px;background:#fff}
+.cc-d{margin-top:6px;font-size:13px;font-family:'Space Mono',monospace}.cc-d em{font-style:normal;font-weight:800;margin-left:6px;padding:0 6px;border-radius:5px}.cc-d em.up{background:#fdecea;color:var(--red)}.cc-d em.dn{background:#e8f5e8;color:var(--green)}.cc-d .bad{color:var(--red);font-weight:700}
+.cc-paste{margin-top:6px;font-size:12px;color:var(--muted)}.cc-paste textarea{width:100%;height:54px;margin-top:4px;border:1px solid var(--bd);border-radius:7px;padding:6px;font-size:12px}
+.cc-b{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+tr.cc-mark td{background:#fff6cf!important}
+</style>
+<div id="cc-modal">
+  <div class="cc-box">
+    <div class="cc-h">📥 叫貨 App 送來的成本<small id="cc-sub"></small></div>
+    <div class="cc-note">這裡只是<b>待確認</b>，<b>還沒有發布</b>，客人看的報價頁不會變。按「帶入」只會改這個後台裡的成本（黃底標出來），你看過價格沒問題，再按右上角「發布」，客人才會看到。</div>
+    <div id="cc-list"></div>
+    <div class="cc-paste">雲端傳不過來時，可以在叫貨 App 按「複製成本資料」，貼在這裡：<textarea id="cc-paste" placeholder="貼上叫貨 App 複製的成本資料"></textarea><button class="btn-o btn-sm" onclick="ccImport()" style="margin-top:4px">讀取貼上的資料</button></div>
+    <div class="cc-b"><button class="btn-o" onclick="ccClose()">關閉</button><button class="btn-o" onclick="ccClear()">略過這批</button><button class="btn-g" onclick="ccApply()">帶入勾選的（不發布）</button></div>
+  </div>
+</div>
+<script>
+(function(){
+  const CC = { pending: null, map: {} };
+  window.__CC = CC;
+  const $c = id => document.getElementById(id);
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const baseN = n => String(n || '').replace(/[\/／].*$/, '').trim();
+  function db() {
+    if (!_fbDb) {
+      const existing = window.firebase && window.firebase.apps && window.firebase.apps.find(a => a.name === '[DEFAULT]');
+      const app = existing || firebase.initializeApp({ apiKey: _FB_KEY, projectId: _FB_PID, authDomain: `${_FB_PID}.firebaseapp.com` });
+      _fbDb = app.firestore();
+    }
+    return _fbDb;
+  }
+  const entries = () => (CC.pending && CC.pending.entries) || [];
+  function badge() {
+    const b = $c('cc-btn'); if (!b) return; const n = entries().length;
+    b.textContent = '📥 叫貨成本' + (n ? ' (' + n + ')' : ''); b.classList.toggle('has', n > 0);
+  }
+  function mount() {
+    const bar = document.querySelector('.topbar-right'); if (!bar || $c('cc-btn')) return;
+    const b = document.createElement('button'); b.id = 'cc-btn'; b.textContent = '📥 叫貨成本'; b.onclick = ccOpen; bar.insertBefore(b, bar.firstChild);
+  }
+  async function check(quiet) {
+    try {
+      const d = db(), [p, m] = await Promise.all([d.collection('price_board').doc('cost_pending').get(), d.collection('price_board').doc('cost_map').get()]);
+      CC.pending = p.exists ? p.data() : null; CC.map = m.exists ? ((m.data() || {}).map || {}) : {};
+    } catch (e) { if (!quiet) toast('讀取叫貨成本失敗：' + e.message); }
+    badge();
+  }
+  function match(en) {
+    const items = state.items.filter(i => i.cat !== 'c4');
+    const id = CC.map[en.key]; if (id && items.some(i => i.id === id)) return id;
+    const h = en.hint; if (!h) return '';
+    const it = items.find(i => i.name === h) || items.find(i => baseN(i.name) === baseN(h) && baseN(h));
+    return it ? it.id : '';
+  }
+  function sell(it) { try { return sellPrice(it) } catch (e) { return 0 } }
+  function opts(en, sel) {
+    const key = String(en.name).replace(/籃裝|修清|加工/g, '');
+    const items = state.items.filter(i => i.cat !== 'c4' && i.name);
+    const near = key ? items.filter(i => i.name.includes(key)) : [], rest = items.filter(i => !near.includes(i));
+    const o = i => `<option value="${esc(i.id)}"${i.id === sel ? ' selected' : ''}>${esc(i.name)}　（成本 ${Number(i.cost) || 0}）</option>`;
+    return `<option value="">— 選對應的報價品項 —</option>` + (near.length ? `<optgroup label="名字相近">${near.map(o).join('')}</optgroup>` : '') + `<optgroup label="全部品項">${rest.map(o).join('')}</optgroup>`;
+  }
+  function detail(k) {
+    const en = entries()[k], sel = document.querySelector(`#cc-list select[data-k="${k}"]`), box = document.querySelector(`#cc-list .cc-d[data-k="${k}"]`);
+    if (!box) return; const it = sel && state.items.find(i => i.id === sel.value), r = box.closest('.cc-r');
+    if (!it) { box.innerHTML = '<span class="bad">還沒選對應品項，這一項不會帶入</span>'; r.classList.remove('big'); return; }
+    const old = Number(it.cost) || 0, nw = Number(en.cost) || 0, chg = old ? (nw - old) / old : null;
+    const s0 = sell(it), s1 = sell({ ...it, cost: nw });
+    box.innerHTML = `成本 ${old} → <b>${nw}</b>${chg != null ? `<em class="${chg > 0 ? 'up' : 'dn'}">${chg > 0 ? '＋' : '－'}${Math.round(Math.abs(chg) * 100)}%</em>` : ''}　售價 ${s0} → <b>${s1}</b>${chg != null && Math.abs(chg) > 0.3 ? '<br><span class="bad">跟目前差超過 30%，帶入前再確認一下</span>' : ''}`;
+    r.classList.toggle('big', chg != null && Math.abs(chg) > 0.3);
+  }
+  function render() {
+    const en = entries(), list = $c('cc-list');
+    $c('cc-sub').textContent = CC.pending && CC.pending.at ? '（' + new Date(CC.pending.at).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' 送來' + (CC.pending.by ? '，' + CC.pending.by : '') + '）' : '';
+    if (!en.length) { list.innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted)">目前沒有待確認的成本。到叫貨 App 的「到貨」頁，按「送到採鮮報價…」。</div>'; return; }
+    list.innerHTML = en.map((e, k) => { const m = match(e); return `<div class="cc-r"><div class="cc-r1"><input type="checkbox" data-c="${k}" checked><b>${esc(e.name)}</b><span class="nv">${esc(e.cost)} 元/${esc(e.unit || '')}</span><small>${esc(e.basis || '')}</small></div>
+      <select data-k="${k}" onchange="__ccDetail(${k})">${opts(e, m)}</select><div class="cc-d" data-k="${k}"></div></div>` }).join('');
+    en.forEach((e, k) => detail(k));
+  }
+  window.__ccDetail = detail;
+  window.ccOpen = async function () { $c('cc-modal').style.display = 'flex'; $c('cc-list').innerHTML = '<div style="padding:18px;text-align:center">讀取中…</div>'; await check(); render(); };
+  window.ccClose = function () { $c('cc-modal').style.display = 'none'; };
+  window.ccImport = function () {
+    try { const d = JSON.parse($c('cc-paste').value.trim()); if (!d || !Array.isArray(d.entries)) throw new Error('格式不對'); CC.pending = d; badge(); render(); toast('已讀取 ' + d.entries.length + ' 項'); }
+    catch (e) { toast('讀不懂貼上的資料：' + e.message); }
+  };
+  window.ccClear = async function () {
+    if (!confirm('略過這批叫貨成本？（不會改任何價格）')) return;
+    try { await db().collection('price_board').doc('cost_pending').delete(); } catch (e) {}
+    CC.pending = null; badge(); render(); toast('已略過');
+  };
+  window.ccApply = async function () {
+    const en = entries(), done = [], ids = [], newMap = {};
+    en.forEach((e, k) => {
+      const chk = document.querySelector(`#cc-list input[data-c="${k}"]`), sel = document.querySelector(`#cc-list select[data-k="${k}"]`);
+      if (!chk || !chk.checked || !sel || !sel.value) return;
+      const it = state.items.find(i => i.id === sel.value); if (!it) return;
+      setField(it.id, 'cost', e.cost); ids.push(it.id); newMap[e.key] = it.id; done.push(k);
+    });
+    if (!done.length) { toast('沒有可以帶入的項目（要先選對應的報價品項）'); return; }
+    saveLocal(); renderPriceView();
+    setTimeout(() => ids.forEach(id => { const tr = document.querySelector(`tr[data-id="${id}"]`); if (tr) tr.classList.add('cc-mark'); }), 150);
+    try {
+      const d = db(), left = en.filter((e, k) => !done.includes(k));
+      await d.collection('price_board').doc('cost_map').set({ map: { ...CC.map, ...newMap } }, { merge: true });
+      if (left.length) await d.collection('price_board').doc('cost_pending').set({ ...CC.pending, entries: left }); else await d.collection('price_board').doc('cost_pending').delete();
+      CC.map = { ...CC.map, ...newMap }; CC.pending = left.length ? { ...CC.pending, entries: left } : null;
+    } catch (e) { toast('已帶入，但清除待確認失敗：' + e.message); }
+    badge(); render(); ccClose();
+    toast('已帶入 ' + done.length + ' 項成本（黃底）。還沒發布，確認價格後按右上角「發布」');
+  };
+  window.addEventListener('DOMContentLoaded', () => { mount(); setTimeout(() => check(true), 1500); });
+  if (document.readyState !== 'loading') { mount(); setTimeout(() => check(true), 1500); }
+})();
+</script>
 </body>
 </html>
