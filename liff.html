@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>採鮮農產行｜今日報價</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Noto Sans TC','PingFang TC',sans-serif;
+  background:#eef2f6;color:#1a1a2e;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+
+/* ── 頂部 ── */
+.top{
+  background:linear-gradient(135deg,#1a5276,#2980b9);
+  color:#fff;padding:14px 16px 12px;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 12px rgba(26,82,118,.25);
+}
+.top-row{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.shop{font-size:22px;font-weight:900;letter-spacing:.01em;line-height:1.1}
+.sub{font-size:12px;opacity:.85;margin-top:3px}
+.date{font-size:13px;font-weight:700;text-align:right;white-space:nowrap}
+.date small{display:block;font-size:10px;opacity:.8;font-weight:400;margin-top:2px}
+
+/* ── 搜尋 ── */
+.search-wrap{padding:10px 12px 0}
+.search{
+  width:100%;border:none;border-radius:10px;
+  padding:11px 14px;font-size:15px;font-family:inherit;
+  background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08);outline:none;
+}
+.search::placeholder{color:#aab}
+
+/* ── 類別 ── */
+.wrap{padding:10px 12px 28px;max-width:640px;margin:0 auto}
+.cat{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.cat-hdr{
+  padding:11px 15px;font-size:16px;font-weight:900;color:#fff;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.cat-hdr .n{font-size:12px;font-weight:500;opacity:.85}
+.item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 15px;border-bottom:1px solid #eef2f6;
+  font-size:16px;gap:10px;
+}
+.item:last-child{border-bottom:none}
+.item:nth-child(even){background:#fafcfe}
+.nm{flex:1;line-height:1.35}
+.pr{font-weight:900;white-space:nowrap;font-size:18px;color:#1a2a4a}
+.pr.up{color:#c0392b}
+.pr.down{color:#1565c0}
+.ar{font-size:13px;margin-left:1px}
+
+/* ── 狀態畫面 ── */
+.state{
+  min-height:70vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px 28px;text-align:center;
+}
+.state .ic{font-size:54px;margin-bottom:16px}
+.state h2{font-size:20px;font-weight:900;color:#1a5276;margin-bottom:10px}
+.state p{font-size:15px;color:#667;line-height:1.9;max-width:320px}
+.state .who{
+  margin-top:18px;padding:10px 20px;background:#fff;border-radius:10px;
+  font-size:14px;color:#445;box-shadow:0 1px 6px rgba(0,0,0,.07);
+}
+.state .who b{color:#1a5276}
+.btn{
+  display:inline-block;margin-top:22px;
+  background:#06c755;color:#fff;text-decoration:none;
+  padding:13px 32px;border-radius:26px;
+  font-size:16px;font-weight:700;font-family:inherit;border:none;cursor:pointer;
+  box-shadow:0 3px 12px rgba(6,199,85,.3);
+}
+.foot{text-align:center;font-size:12px;color:#8a97a5;line-height:2;padding:4px 16px 20px}
+.foot b{color:#1a5276;font-size:13px}
+.spin{
+  width:34px;height:34px;border:3px solid #d7e3ee;border-top-color:#2980b9;
+  border-radius:50%;animation:sp .8s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:30px;text-align:center;color:#9aa;font-size:14px}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="state"><div class="spin"></div></div>
+</div>
+
+<script>
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  設定                                                      ║
+// ╚═══════════════════════════════════════════════════════════╝
+const LIFF_ID       = '';   // ← 在 LINE Developers 建立 LIFF 後填入
+const FB_PROJECT_ID = 'caixian-price-619c4';
+const FB_API_KEY    = 'AIzaSyDyIgF1T3qwVUdxTtfuo9SRwpiEQpfMaIA';
+const LINE_OA       = 'https://line.me/R/ti/p/@nvy5669n';
+
+const CATS = [
+  {id:'c4', name:'🔪 蔬菜截切', color:'#1a7a6e'},
+  {id:'c1', name:'🥬 葉菜類',   color:'#1e8449'},
+  {id:'c2', name:'🍈 瓜果類',   color:'#b8960c'},
+  {id:'c3', name:'🍄 菇與其他', color:'#7b241c'},
+];
+
+let db = null, allItems = [], meta = {}, profile = null;
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  售價計算（與 admin / public 完全一致）                      ║
+// ╚═══════════════════════════════════════════════════════════╝
+function retailProgressive13(base) {
+  const rate = base <= 25 ? 1.30 : 1.25;
+  return roundTail(base * rate);
+}
+function retailProgressiveAddon(base) {
+  let rate;
+  if (base <= 25)       rate = 1.50;
+  else if (base <= 99)  rate = 1.45;
+  else if (base <= 199) rate = 1.40;
+  else                  rate = 1.35;
+  return roundTail(base * rate);
+}
+function roundTail(raw) {
+  const b = Math.floor(raw / 10) * 10;
+  const ones = raw - b;
+  const targets = [0, 3, 5, 8, 10];
+  const closest = targets.reduce((a, t) => Math.abs(ones - a) <= Math.abs(ones - t) ? a : t);
+  return b + (closest === 10 ? 10 : closest);
+}
+function progressiveAddon(cost, rate, fixed) {
+  rate  = rate  || 0.30;
+  fixed = fixed || 100;
+  if (cost <= 330) return fixed;
+  const raw = cost * rate;
+  const base = Math.floor(raw / 100) * 100;
+  const ones = raw - base;
+  const targets = [0, 30, 50, 80, 100];
+  const closest = targets.reduce((a, b) => Math.abs(ones - a) <= Math.abs(ones - b) ? a : b);
+  return base + (closest === 100 ? 100 : closest);
+}
+function calcSell(item, all) {
+  if (item.cat === 'c4' && item.srcId) return cutPrice(item, all);
+  const cost = Number(item.cost)||0;
+  if (!cost) return Number(item.price)||0;
+  if (item.type==='manual')             return Number(item.price)||0;
+  if (item.type==='fixed')              return cost + (Number(item.markup)||0);
+  if (item.type==='progressive')        return cost + progressiveAddon(cost, 0.30, 100);
+  if (item.type==='progressive-20')     return cost + progressiveAddon(cost, 0.20, 70);
+  if (item.type==='progressive-15')     return cost + progressiveAddon(cost, 0.15, 50);
+  if (item.type==='retail-progressive') return retailProgressiveAddon(cost);
+  if (item.type==='retail-13')          return retailProgressive13(cost);
+  return Math.round(cost * (1 + (Number(item.markup)||0)/100));
+}
+function cutPrice(item, all) {
+  const src = all.find(i => i.id === item.srcId);
+  if (!src) return 0;
+  if ((item.cutType||'whole') === 'whole') {
+    const sp = calcSell(src, all);
+    return sp ? Math.round(sp + (Number(item.cutFee)||0)) : 0;
+  }
+  const base = calcSell(src, all);
+  if (!base) return 0;
+  const w = Number(item.srcWeight)||1;
+  const y = Number(item.cutYield)||1;
+  const a = Number(item.cutAddon)||0;
+  return Math.round((base/w)/y + a);
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  畫面                                                      ║
+// ╚═══════════════════════════════════════════════════════════╝
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function today(){
+  const d = new Date();
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+function showState(icon, title, msg, showBtn) {
+  document.getElementById('app').innerHTML = `
+    <div class="state">
+      <div class="ic">${icon}</div>
+      <h2>${esc(title)}</h2>
+      <p>${msg}</p>
+      ${profile ? `<div class="who">您的 LINE 名稱：<b>${esc(profile.displayName)}</b></div>` : ''}
+      ${showBtn ? `<a class="btn" href="${LINE_OA}">聯繫採鮮農產行</a>` : ''}
+    </div>`;
+}
+
+function renderQuote() {
+  const upd = meta._updatedAt ? new Date(meta._updatedAt).toLocaleString('zh-TW',
+                {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  document.getElementById('app').innerHTML = `
+    <div class="top">
+      <div class="top-row">
+        <div>
+          <div class="shop">${esc(meta.name||'採鮮農產行')}</div>
+          <div class="sub">${esc(meta.phone||'')}　${esc(meta.line||'')}</div>
+        </div>
+        <div class="date">${today()}<small>${upd ? '更新 '+upd : '當日行情價'}</small></div>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input class="search" id="q" type="search" placeholder="🔍 搜尋品名…" autocomplete="off">
+    </div>
+    <div class="wrap" id="list"></div>
+    <div class="foot">
+      <div>※ ${esc(meta.note||'價格以當日市場行情為準，如有異動恕不另行通知')}</div>
+      <div><b>感謝您的支持與愛護 🙏</b></div>
+    </div>`;
+  document.getElementById('q').addEventListener('input', e => paint(e.target.value.trim()));
+  paint('');
+}
+
+function paint(kw) {
+  const low = kw.toLowerCase();
+  let html = '', total = 0;
+  CATS.forEach(cat => {
+    const rows = allItems.filter(i =>
+      i.cat === cat.id &&
+      i.visible !== false &&
+      calcSell(i, allItems) > 0 &&
+      (!low || String(i.name||'').toLowerCase().includes(low))
+    );
+    if (!rows.length) return;
+    total += rows.length;
+    html += `<div class="cat">
+      <div class="cat-hdr" style="background:${cat.color}">
+        <span>${cat.name}</span><span class="n">${rows.length} 項</span>
+      </div>
+      ${rows.map(it => {
+        const sp = calcSell(it, allItems);
+        const cls = it.trend==='up' ? ' up' : it.trend==='down' ? ' down' : '';
+        const ar  = it.trend==='up' ? '<span class="ar">↑</span>'
+                  : it.trend==='down' ? '<span class="ar">↓</span>' : '';
+        return `<div class="item"><span class="nm">${esc(it.name)}</span><span class="pr${cls}">${sp}${ar}</span></div>`;
+      }).join('')}
+    </div>`;
+  });
+  document.getElementById('list').innerHTML =
+    total ? html : `<div class="cat"><div class="empty">找不到「${esc(kw)}」</div></div>`;
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  權限判定                                                  ║
+// ╚═══════════════════════════════════════════════════════════╝
+async function resolveAccess(userId, displayName) {
+  const ref  = db.collection('customers').doc(userId);
+  const snap = await ref.get();
+  const now  = new Date().toISOString();
+
+  // 預設政策：open = 新客人直接看得到；review = 要先審核
+  let policy = 'open';
+  try {
+    const cfg = await db.collection('customers').doc('_settings').get();
+    if (cfg.exists && cfg.data().defaultAccess) policy = cfg.data().defaultAccess;
+  } catch(e) {}
+
+  if (!snap.exists) {
+    const status = policy === 'review' ? 'pending' : 'allowed';
+    await ref.set({ displayName, status, firstSeen: now, lastSeen: now, note: '' });
+    return status;
+  }
+
+  const d = snap.data();
+  await ref.update({ displayName, lastSeen: now });
+  return d.status || 'allowed';
+}
+
+async function loadQuote() {
+  const snap = await db.collection('price_board').doc('current').get();
+  if (!snap.exists) { showState('📭','尚無報價資料','今天的報價還沒發布，請稍後再看。', true); return; }
+  const d = snap.data();
+  allItems = d.items || [];
+  meta = d.meta || {};
+  meta._updatedAt = d.updatedAt || '';
+  renderQuote();
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  啟動                                                      ║
+// ╚═══════════════════════════════════════════════════════════╝
+async function main() {
+  // Firebase
+  const app = firebase.apps[0] || firebase.initializeApp({
+    apiKey: FB_API_KEY, projectId: FB_PROJECT_ID,
+    authDomain: `${FB_PROJECT_ID}.firebaseapp.com`
+  });
+  db = app.firestore();
+
+  if (!LIFF_ID) {
+    showState('⚙️','尚未設定 LIFF','這個頁面需要在 LINE Developers 建立 LIFF 應用程式後，把 LIFF ID 填入才能使用。', false);
+    return;
+  }
+
+  try {
+    await liff.init({ liffId: LIFF_ID });
+  } catch(e) {
+    showState('⚠️','初始化失敗', esc(e.message||'LIFF 無法啟動'), true);
+    return;
+  }
+
+  if (!liff.isLoggedIn()) { liff.login(); return; }
+
+  try {
+    profile = await liff.getProfile();
+  } catch(e) {
+    showState('⚠️','無法取得身分','請關閉後重新從 LINE 開啟。', true);
+    return;
+  }
+
+  let status;
+  try {
+    status = await resolveAccess(profile.userId, profile.displayName);
+  } catch(e) {
+    showState('⚠️','連線失敗','請檢查網路後重新開啟。', true);
+    return;
+  }
+
+  if (status === 'allowed') {
+    try { await loadQuote(); }
+    catch(e) { showState('⚠️','載入失敗', esc(e.message||''), true); }
+  } else if (status === 'blocked') {
+    showState('🔒','報價未開放','您的帳號目前沒有報價查看權限，如有需要請與我們聯繫。', true);
+  } else {
+    showState('⏳','等待開通','已收到您的查看申請，我們確認後就會開通，請稍候或直接與我們聯繫。', true);
+  }
+}
+
+main();
+</script>
+</body>
+</html>

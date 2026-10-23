@@ -219,6 +219,7 @@ window.addEventListener('DOMContentLoaded', () => {
     <div class="tab active" data-tab="price">報價設定</div>
     <div class="tab" data-tab="profit">利潤分析</div>
     <div class="tab" data-tab="history">歷史紀錄</div>
+    <div class="tab" data-tab="customers">客戶管理</div>
   </div>
   <div class="topbar-right">
     <span id="sync-dot" style="font-size:11px;color:rgba(255,255,255,.6)"></span>
@@ -345,6 +346,47 @@ window.addEventListener('DOMContentLoaded', () => {
       <button class="btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="exportAllHistory()">↓ 匯出全部</button>
     </div>
     <div id="hist-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TAB 4: 客戶管理（LIFF 分眾報價）
+══════════════════════════════════════════════════════ -->
+<div class="view" id="view-customers">
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-hdr" style="background:#1a5276">
+      新客人預設權限
+      <button class="btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="loadCustomers()">↻ 重新整理</button>
+    </div>
+    <div style="padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+        <input type="radio" name="defpol" value="open" onchange="setPolicy('open')">
+        <span><b>開放</b>　新客人直接看得到，要擋的再設封鎖</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+        <input type="radio" name="defpol" value="review" onchange="setPolicy('review')">
+        <span><b>審核</b>　新客人一律先擋住，你開通才看得到</span>
+      </label>
+      <span id="pol-msg" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr" style="background:var(--green)">
+      客戶名單
+      <span id="cust-count" style="font-size:12px;font-weight:400;opacity:.85"></span>
+    </div>
+    <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="cust-search" placeholder="搜尋名稱 / 備註…" style="flex:1;min-width:160px;padding:6px 10px;font-size:13px"
+        oninput="renderCustomers()">
+      <select id="cust-filter" onchange="renderCustomers()" style="padding:6px 10px;font-size:13px">
+        <option value="all">全部</option>
+        <option value="allowed">✅ 可查看</option>
+        <option value="pending">⏳ 待開通</option>
+        <option value="blocked">🔒 已封鎖</option>
+      </select>
+    </div>
+    <div id="cust-list"><div style="padding:28px;text-align:center;color:var(--muted)">請按「↻ 重新整理」載入</div></div>
   </div>
 </div>
 
@@ -538,8 +580,125 @@ document.getElementById('tabs').addEventListener('click', e => {
   tab.classList.add('active');
   const name = tab.dataset.tab;
   document.getElementById('view-' + name).classList.add('active');
-  if (name === 'history') renderHistory();
+  if (name === 'history')   renderHistory();
+  if (name === 'customers') loadCustomers();
 });
+
+// ╔══════════════════════════════════════════════════════╗
+// ║  客戶管理（LIFF 分眾報價）                             ║
+// ╚══════════════════════════════════════════════════════╝
+let _customers = [];
+
+async function _ensureDb() {
+  if (_fbDb) return _fbDb;
+  const existing = window.firebase?.apps?.find(a => a.name === '[DEFAULT]');
+  const app = existing || firebase.initializeApp({
+    apiKey:_FB_KEY, projectId:_FB_PID, authDomain:`${_FB_PID}.firebaseapp.com`
+  });
+  _fbDb = app.firestore();
+  return _fbDb;
+}
+
+async function loadCustomers() {
+  const box = document.getElementById('cust-list');
+  box.innerHTML = '<div style="padding:28px;text-align:center;color:var(--muted)">載入中…</div>';
+  try {
+    const db = await _ensureDb();
+    const snap = await db.collection('customers').get();
+    _customers = [];
+    let policy = 'open';
+    snap.forEach(doc => {
+      if (doc.id === '_settings') { policy = doc.data().defaultAccess || 'open'; return; }
+      _customers.push({ id: doc.id, ...doc.data() });
+    });
+    _customers.sort((a,b) => String(b.lastSeen||'').localeCompare(String(a.lastSeen||'')));
+    const radio = document.querySelector(`input[name=defpol][value=${policy}]`);
+    if (radio) radio.checked = true;
+    renderCustomers();
+  } catch(e) {
+    box.innerHTML = `<div style="padding:28px;text-align:center;color:var(--red)">載入失敗：${e.message}</div>`;
+  }
+}
+
+async function setPolicy(v) {
+  const msg = document.getElementById('pol-msg');
+  try {
+    const db = await _ensureDb();
+    await db.collection('customers').doc('_settings').set({ defaultAccess: v }, { merge:true });
+    msg.textContent = '✓ 已設定為「' + (v==='open' ? '開放' : '審核') + '」';
+    msg.style.color = 'var(--green)';
+  } catch(e) {
+    msg.textContent = '設定失敗：' + e.message;
+    msg.style.color = 'var(--red)';
+  }
+}
+
+async function setCustStatus(id, status) {
+  try {
+    const db = await _ensureDb();
+    await db.collection('customers').doc(id).update({ status });
+    const c = _customers.find(x => x.id === id);
+    if (c) c.status = status;
+    renderCustomers();
+  } catch(e) { toast('更新失敗：' + e.message); }
+}
+
+async function setCustNote(id, note) {
+  try {
+    const db = await _ensureDb();
+    await db.collection('customers').doc(id).update({ note });
+    const c = _customers.find(x => x.id === id);
+    if (c) c.note = note;
+  } catch(e) { toast('備註儲存失敗：' + e.message); }
+}
+
+function renderCustomers() {
+  const box  = document.getElementById('cust-list');
+  const kw   = (document.getElementById('cust-search').value || '').toLowerCase().trim();
+  const filt = document.getElementById('cust-filter').value;
+
+  let list = _customers.filter(c => {
+    const st = c.status || 'allowed';
+    if (filt !== 'all' && st !== filt) return false;
+    if (!kw) return true;
+    return (String(c.displayName||'') + ' ' + String(c.note||'')).toLowerCase().includes(kw);
+  });
+
+  const n = { allowed:0, pending:0, blocked:0 };
+  _customers.forEach(c => { n[c.status || 'allowed'] = (n[c.status || 'allowed']||0) + 1; });
+  document.getElementById('cust-count').textContent =
+    `共 ${_customers.length} 人　✅ ${n.allowed||0}　⏳ ${n.pending||0}　🔒 ${n.blocked||0}`;
+
+  if (!list.length) {
+    box.innerHTML = `<div style="padding:28px;text-align:center;color:var(--muted)">${
+      _customers.length ? '沒有符合的客戶' : '還沒有客人開過報價頁'}</div>`;
+    return;
+  }
+
+  const LBL = { allowed:'✅ 可查看', pending:'⏳ 待開通', blocked:'🔒 已封鎖' };
+  const COL = { allowed:'var(--green)', pending:'#c77700', blocked:'var(--red)' };
+
+  box.innerHTML = list.map(c => {
+    const st = c.status || 'allowed';
+    const seen = c.lastSeen ? new Date(c.lastSeen).toLocaleString('zh-TW',
+                   {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f0f4f0;flex-wrap:wrap">
+      <div style="flex:1;min-width:150px">
+        <div style="font-weight:700;font-size:14px">${(c.displayName||'(無名稱)').replace(/</g,'&lt;')}
+          <span style="font-size:11px;font-weight:400;color:${COL[st]};margin-left:6px">${LBL[st]}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">最近查看：${seen}</div>
+      </div>
+      <input type="text" value="${String(c.note||'').replace(/"/g,'&quot;')}" placeholder="備註（店名…）"
+        style="width:140px;padding:5px 8px;font-size:12px"
+        onchange="setCustNote('${c.id}', this.value)">
+      <div style="display:flex;gap:5px">
+        <button class="btn-g btn-xs"  onclick="setCustStatus('${c.id}','allowed')" ${st==='allowed'?'disabled style=opacity:.4':''}>開通</button>
+        <button class="btn-r btn-xs"  onclick="setCustStatus('${c.id}','blocked')" ${st==='blocked'?'disabled style=opacity:.4':''}>封鎖</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 // ╔══════════════════════════════════════════════════════╗
 // ║  META                                                ║
