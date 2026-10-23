@@ -183,8 +183,17 @@ input:focus,select:focus{outline:none;border-color:var(--gm)}
   </div>
 </div>
 <script>
+function normPw(s) {
+  // 全形數字/英文 → 半形，並去除空白，避免輸入法在全形模式時比對失敗
+  return String(s || '')
+    .replace(/[\uFF01-\uFF5E]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/\u3000/g, '')
+    .replace(/\s/g, '')
+    .trim();
+}
+
 function checkPw() {
-  const val = document.getElementById('pw-input').value;
+  const val = normPw(document.getElementById('pw-input').value);
   if (val === '433127') {
     document.getElementById('lock-screen').style.display = 'none';
     sessionStorage.setItem('cxnc_auth', '1');
