@@ -162,6 +162,7 @@ input:focus,select:focus{outline:none;border-color:var(--gm)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
 </head>
 <body>
 
@@ -192,24 +193,58 @@ function normPw(s) {
     .trim();
 }
 
-function checkPw() {
-  const val = normPw(document.getElementById('pw-input').value);
-  if (val === '433127') {
-    document.getElementById('lock-screen').style.display = 'none';
-    sessionStorage.setItem('cxnc_auth', '1');
-  } else {
-    document.getElementById('pw-err').textContent = '密碼錯誤，請重試';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
-  }
-}
-if (sessionStorage.getItem('cxnc_auth') === '1') {
-  window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('lock-screen').style.display = 'none';
+// ── 登入：交給 Firebase 驗證，密碼不寫在網頁裡 ──────────────────────
+const ADMIN_EMAIL = 'admin@caixian-price.local';
+
+function _fbInit() {
+  const existing = window.firebase?.apps?.find(a => a.name === '[DEFAULT]');
+  return existing || firebase.initializeApp({
+    apiKey: 'AIzaSyDyIgF1T3qwVUdxTtfuo9SRwpiEQpfMaIA',
+    projectId: 'caixian-price-619c4',
+    authDomain: 'caixian-price-619c4.firebaseapp.com'
   });
 }
+
+function unlock() {
+  document.getElementById('lock-screen').style.display = 'none';
+}
+
+async function checkPw() {
+  const pw  = normPw(document.getElementById('pw-input').value);
+  const err = document.getElementById('pw-err');
+  const btn = document.querySelector('#lock-screen button');
+  if (!pw) { err.textContent = '請輸入密碼'; return; }
+
+  err.style.color = '#888';
+  err.textContent = '驗證中…';
+  btn.disabled = true;
+
+  try {
+    const app = _fbInit();
+    await app.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pw);
+    unlock();
+  } catch(e) {
+    err.style.color = '#c0392b';
+    const code = e && e.code || '';
+    err.textContent =
+      (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found'))
+        ? '密碼錯誤，請重試'
+        : code.includes('network')     ? '連線失敗，請檢查網路'
+        : code.includes('too-many')    ? '嘗試次數過多，請稍後再試'
+        : '登入失敗：' + (e.message || code);
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 已登入過就直接進入（Firebase 會記住登入狀態）
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pw-input').focus();
+  try {
+    _fbInit().auth().onAuthStateChanged(u => { if (u) unlock(); });
+  } catch(e) {}
 });
 </script>
 

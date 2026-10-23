@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// ╔═══════════════════════════════════════════════════════════════╗
+// ║  採鮮農產行報價系統 — Firestore 安全規則                        ║
+// ║                                                               ║
+// ║  報價：所有人看得到，只有登入後台的你能改                       ║
+// ║  客戶名單：客人只能登錄自己，整份名單只有你看得到               ║
+// ╚═══════════════════════════════════════════════════════════════╝
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 是否為已登入的管理員
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // ── 報價資料 ──────────────────────────────────────────────
+    // public.html / quote.html / liff.html 都要讀 → 開放讀取
+    // 發布只有 admin.html 登入後能做
+    match /price_board/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── 客戶名單 ──────────────────────────────────────────────
+    match /customers/{userId} {
+
+      // 單筆讀取：LIFF 要查自己的權限、也要讀 _settings 的預設政策
+      // （要知道 userId 才讀得到，無法亂猜）
+      allow get: if true;
+
+      // 整份名單列出：只有登入的管理員
+      allow list: if isAdmin();
+
+      // 刪除：只有管理員
+      allow delete: if isAdmin();
+
+      // 新增／更新
+      allow create, update: if isAdmin()
+        // 或客人從 LIFF 自行登錄：限定欄位，且不得碰設定檔
+        || (
+             userId != '_settings'
+             && request.resource.data.keys().hasOnly(
+                  ['displayName', 'status', 'firstSeen', 'lastSeen', 'note']
+                )
+           );
+    }
+
+    // ── 其他路徑一律封鎖 ───────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
