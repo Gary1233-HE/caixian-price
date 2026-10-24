@@ -227,11 +227,15 @@ async function checkPw() {
     err.style.color = '#c0392b';
     const code = e && e.code || '';
     err.textContent =
-      (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found'))
+      code.includes('configuration-not-found')
+        ? 'Firebase 的 Authentication 尚未啟用（Console → Authentication → 開始使用 → 電子郵件/密碼 → 啟用 → 儲存）'
+      : code.includes('operation-not-allowed')
+        ? '尚未開啟「電子郵件/密碼」登入方式，請到 Console → Authentication → Sign-in method 啟用'
+      : (code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('user-not-found'))
         ? '密碼錯誤，請重試'
-        : code.includes('network')     ? '連線失敗，請檢查網路'
-        : code.includes('too-many')    ? '嘗試次數過多，請稍後再試'
-        : '登入失敗：' + (e.message || code);
+      : code.includes('network')  ? '連線失敗，請檢查網路'
+      : code.includes('too-many') ? '嘗試次數過多，請稍後再試'
+      : '登入失敗：' + (e.message || code);
     document.getElementById('pw-input').value = '';
     document.getElementById('pw-input').focus();
   } finally {
