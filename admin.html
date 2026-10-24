@@ -295,7 +295,7 @@ window.addEventListener('DOMContentLoaded', () => {
       <span style="font-size:11px;color:var(--muted)">拖曳 ⠿ 可在欄內排序</span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn-o btn-sm" onclick="openBatch()">批次加成率</button>
+      <button class="btn-o btn-sm" onclick="openBatch()">批次計算方式</button>
     </div>
   </div>
 
@@ -432,14 +432,28 @@ window.addEventListener('DOMContentLoaded', () => {
 <!-- Batch modal -->
 <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:10px;padding:22px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-    <div style="font-weight:800;font-size:14px;margin-bottom:14px">批次設定加成率</div>
+    <div style="font-weight:800;font-size:14px;margin-bottom:14px">批次設定計算方式</div>
     <div style="margin-bottom:10px">
       <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px">套用類別</div>
       <div id="modal-cats" style="display:flex;flex-wrap:wrap;gap:5px"></div>
     </div>
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">加成率 %</div>
-      <input type="number" id="modal-rate" value="30" style="font-size:14px;padding:6px 8px">
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">計算方式</div>
+      <select id="modal-type" style="width:100%;font-size:14px;padding:6px 8px" onchange="onBatchTypeChange()">
+        <option value="progressive">累進 1.3</option>
+        <option value="progressive-20">累進 1.2</option>
+        <option value="progressive-15">累進 1.15</option>
+        <option value="retail-progressive">散售</option>
+        <option value="retail-13">散售 1.3</option>
+        <option value="fixed">加元</option>
+      </select>
+    </div>
+    <div style="margin-bottom:14px;display:none" id="modal-addon-row">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">加多少元</div>
+      <input type="number" id="modal-addon" value="30" style="font-size:14px;padding:6px 8px">
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+      截切品項有自己的公式，不受影響
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn-o" onclick="closeModal()">取消</button>
@@ -558,11 +572,15 @@ function init() {
 }
 
 function _initUI() {
+  // 舊的「加成%」資料轉成等價的「加元」（售價不變）
+  const fixedN = migrateLegacyPct();
+  if (fixedN) setTimeout(() => toast(`已修正 ${fixedN} 個舊「加成%」品項為「加元」，售價不變`), 800);
+
   // Ensure all default items exist
   DEFAULT_ITEMS.forEach(def => {
     if (!state.items.find(i => i.id === def.id)) {
-      const defaultType = def.cat === 'c1' ? 'progressive' : 'pct';
-      state.items.push({...def, cost:0, type:defaultType, markup:30, price:0, trend:'', visible:true});
+      const defaultType = 'progressive';
+      state.items.push({...def, cost:0, type:defaultType, markup:0, price:0, trend:'', visible:true});
     }
   });
   if (!state.meta.name) state.meta = {name:'採鮮農產行',contact:'何翰林',phone:'0931-981233',line:'@nvy5669n',note:'價格以當日市場行情為準，如有異動恕不另行通知'};
@@ -997,7 +1015,7 @@ function renderPriceView() {
         ? `<span style="font-size:11px;color:var(--green);font-weight:700">+${retailProgressiveAddon(effectiveCost(item)) - effectiveCost(item)}</span>`
         : `<input type="number" style="width:48px" value="${item.markup||''}" placeholder="0"
             onchange="setField('${item.id}','markup',this.value);refreshRow('${item.id}')">
-           <span style="font-size:10px;color:var(--muted)">${item.type==='pct'?'%':'元'}</span>`;
+           <span style="font-size:10px;color:var(--muted)">元</span>`;
 
       // type select
       const typeSelect = `<select style="width:62px"
@@ -1172,7 +1190,7 @@ function addItemToCol(catId) {
   const base = catId === 'c4'
     ? { cutType:'whole', cutFee:50, srcId:'', srcWeight:1, cutYield:0.8, cutAddon:0,
         type:'manual', markup:0, price:0 }
-    : { cost:0, type:'pct', markup:30, price:0 };
+    : { cost:0, type:'progressive', markup:0, price:0 };
   const newItem = {
     id: 'x' + Date.now(), cat: catId,
     name: '新品項', visible: true,
@@ -1211,15 +1229,46 @@ function openBatch() {
   document.getElementById('modal').style.display = 'flex';
 }
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+function onBatchTypeChange() {
+  const t = document.getElementById('modal-type').value;
+  document.getElementById('modal-addon-row').style.display = (t === 'fixed') ? 'block' : 'none';
+}
+
+const TYPE_LABEL = {
+  'progressive':'累進 1.3', 'progressive-20':'累進 1.2', 'progressive-15':'累進 1.15',
+  'retail-progressive':'散售', 'retail-13':'散售 1.3', 'fixed':'加元', 'manual':'手動'
+};
+
 function applyBatch() {
-  const rate = Number(document.getElementById('modal-rate').value) || 0;
+  const type    = document.getElementById('modal-type').value;
+  const addon   = Number(document.getElementById('modal-addon').value) || 0;
   const checked = [...document.querySelectorAll('#modal-cats input:checked')].map(e => e.value);
+  let n = 0;
   state.items.forEach(it => {
-    if (checked.includes(it.cat)) { it.type = 'pct'; it.markup = rate; }
+    if (!checked.includes(it.cat)) return;
+    if (it.cat === 'c4' && it.srcId) return;   // 截切走自己的公式
+    it.type = type;
+    if (type === 'fixed') it.markup = addon;
+    n++;
   });
   closeModal();
   renderPriceView();
-  toast(`已套用 ${rate}% 加成率`);
+  toast(`已將 ${n} 個品項設為「${TYPE_LABEL[type]}」`);
+}
+
+// 舊資料修正：早期的「加成%」已移除，轉成等價的「加元」讓售價不變
+function migrateLegacyPct() {
+  let n = 0;
+  state.items.forEach(it => {
+    if (it.type !== 'pct') return;
+    const cost = effectiveCost(it);
+    const sell = Math.round(cost * (1 + (Number(it.markup)||0) / 100));
+    it.type   = 'fixed';
+    it.markup = Math.max(0, sell - cost);
+    n++;
+  });
+  return n;
 }
 
 // ╔══════════════════════════════════════════════════════╗
